@@ -1,0 +1,149 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --background: #f6f7f9;
+  --foreground: oklch(0.141 0.005 285.823);
+  --card: #ffffff;
+  --card-foreground: oklch(0.141 0.005 285.823);
+  --popover: #ffffff;
+  --popover-foreground: oklch(0.141 0.005 285.823);
+  --primary: #2563eb;
+  --primary-foreground: #ffffff;
+  --secondary: #eef0f4;
+  --secondary-foreground: oklch(0.21 0.006 285.885);
+  --muted: #eceef2;
+  --muted-foreground: oklch(0.52 0.014 285.938);
+  --accent: #e8ebf0;
+  --accent-foreground: oklch(0.21 0.006 285.885);
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(0.985 0 0);
+  --border: #e5e7eb;
+  --input: #dfe2e8;
+  --ring: #2563eb;
+  --sidebar: #ffffff;
+  --sidebar-foreground: oklch(0.141 0.005 285.823);
+  --sidebar-border: #e5e7eb;
+  --radius: 0.625rem;
+}
+
+.warm {
+  --background: #faf9f5;
+  --foreground: #141413;
+  --card: #fffefa;
+  --card-foreground: #141413;
+  --popover: #fffefa;
+  --popover-foreground: #141413;
+  --primary: #d97757;
+  --primary-foreground: #ffffff;
+  --secondary: #efede4;
+  --secondary-foreground: #2b2a27;
+  --muted: #f2f0e7;
+  --muted-foreground: #6b6860;
+  --accent: #edeae0;
+  --accent-foreground: #141413;
+  --destructive: #c94a38;
+  --destructive-foreground: #ffffff;
+  --border: #e5e2d7;
+  --input: #dfdccc;
+  --ring: #d97757;
+  --sidebar: #f5f4ed;
+  --sidebar-foreground: #141413;
+  --sidebar-border: #e5e2d7;
+}
+
+.dark {
+  --background: #121215;
+  --foreground: oklch(0.985 0 0);
+  --card: #1a1a1f;
+  --card-foreground: oklch(0.985 0 0);
+  --popover: #1a1a1f;
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: #3b82f6;
+  --primary-foreground: #ffffff;
+  --secondary: #24242b;
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: #222228;
+  --muted-foreground: oklch(0.705 0.015 286.067);
+  --accent: #27272f;
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.65 0.21 25.331);
+  --destructive-foreground: oklch(0.985 0 0);
+  --border: #2b2b33;
+  --input: #2b2b33;
+  --ring: #3b82f6;
+  --sidebar: #16161a;
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-border: #26262e;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+    overflow: hidden;
+    @apply bg-background text-foreground antialiased;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "PingFang SC", "Hiragino Sans GB", sans-serif;
+  }
+}
+
+.titlebar-drag {
+  -webkit-app-region: drag;
+}
+
+.titlebar-no-drag {
+  -webkit-app-region: no-drag;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(128, 128, 128, 0.25);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(128, 128, 128, 0.45);
+}

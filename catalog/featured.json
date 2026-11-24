@@ -1,0 +1,2378 @@
+{
+  "version": 2,
+  "updated_at": "2026-11-24",
+  "categories": [
+    "浏览与网络",
+    "AI 工具",
+    "日常办公",
+    "软件开发",
+    "游戏开发",
+    "设计创作",
+    "影音娱乐",
+    "游戏平台",
+    "系统与工具",
+    "菜单栏常驻"
+  ],
+  "starter_pack": [
+    {
+      "group": "浏览与网络",
+      "apps": [
+        "featured-clash-verge-rev",
+        "featured-chrome"
+      ]
+    },
+    {
+      "group": "AI 工具",
+      "apps": [
+        "featured-chatgpt",
+        "featured-antigravity",
+        "featured-claude",
+        "featured-yuanbao",
+        "featured-workbuddy",
+        "featured-trae"
+      ]
+    },
+    {
+      "group": "日常办公",
+      "apps": [
+        "featured-yuque",
+        "featured-wechat",
+        "featured-neteasemusic",
+        "featured-mailmaster",
+        "featured-wpsoffice"
+      ]
+    },
+    {
+      "group": "软件开发",
+      "apps": [
+        "featured-github-desktop",
+        "featured-openidea",
+        "featured-sublime-text"
+      ]
+    },
+    {
+      "group": "游戏平台",
+      "apps": [
+        "featured-steam",
+        "featured-epic-games"
+      ]
+    },
+    {
+      "group": "菜单栏常驻",
+      "apps": [
+        "featured-snipaste",
+        "featured-jetbrains-toolbox"
+      ]
+    }
+  ],
+  "apps": [
+    {
+      "id": "featured-wechat",
+      "name": "微信",
+      "region": "cn",
+      "category": "日常办公",
+      "description": "微信 macOS 官方桌面客户端",
+      "tags": [
+        "必备",
+        "官方"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "wechat"
+      ],
+      "website": "https://mac.weixin.qq.com/",
+      "dock_apps": [
+        "WeChat.app",
+        "微信.app"
+      ]
+    },
+    {
+      "id": "featured-qq",
+      "name": "QQ",
+      "region": "cn",
+      "category": "日常办公",
+      "description": "腾讯 QQ 全新 NT 架构 macOS 客户端",
+      "tags": [
+        "必备",
+        "官方"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "qq"
+      ],
+      "website": "https://im.qq.com/macqq/",
+      "dock_apps": [
+        "QQ.app"
+      ]
+    },
+    {
+      "id": "featured-mailmaster",
+      "name": "网易邮箱大师",
+      "region": "cn",
+      "category": "日常办公",
+      "description": "支持网易、QQ、Gmail、企业邮箱的全能邮件客户端",
+      "tags": [
+        "办公",
+        "免费"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "mailmaster"
+      ],
+      "website": "https://mail.163.com/dashi/",
+      "dock_apps": [
+        "MailMaster.app",
+        "网易邮箱大师.app"
+      ]
+    },
+    {
+      "id": "featured-feishu",
+      "name": "飞书",
+      "region": "cn",
+      "category": "日常办公",
+      "description": "集成即时沟通、日历、云文档与会议的企业协作平台",
+      "tags": [
+        "办公",
+        "热门"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "feishu"
+      ],
+      "website": "https://www.feishu.cn/download",
+      "dock_apps": [
+        "Feishu.app",
+        "飞书.app"
+      ]
+    },
+    {
+      "id": "featured-dingtalk",
+      "name": "钉钉",
+      "region": "cn",
+      "category": "日常办公",
+      "description": "阿里出品的企业办公、打卡与视频会议平台",
+      "tags": [
+        "办公"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "dingtalk"
+      ],
+      "website": "https://www.dingtalk.com/",
+      "dock_apps": [
+        "DingTalk.app",
+        "钉钉.app"
+      ]
+    },
+    {
+      "id": "featured-wechatwork",
+      "name": "企业微信",
+      "region": "cn",
+      "category": "日常办公",
+      "description": "腾讯企业级办公沟通与客户管理工具",
+      "tags": [
+        "办公"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "wechatwork"
+      ],
+      "website": "https://work.weixin.qq.com/",
+      "dock_apps": [
+        "企业微信.app",
+        "WeCom.app"
+      ]
+    },
+    {
+      "id": "featured-tencent-meeting",
+      "name": "腾讯会议",
+      "region": "cn",
+      "category": "日常办公",
+      "description": "高清流畅的云视频会议与屏幕共享软件",
+      "tags": [
+        "必备",
+        "办公"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "tencent-meeting"
+      ],
+      "website": "https://meeting.tencent.com/",
+      "dock_apps": [
+        "TencentMeeting.app",
+        "腾讯会议.app"
+      ]
+    },
+    {
+      "id": "featured-wpsoffice",
+      "name": "WPS Office",
+      "region": "cn",
+      "category": "日常办公",
+      "description": "国内常用文档、表格、演示与 PDF 一体化办公套件",
+      "tags": [
+        "办公",
+        "必备"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "wpsoffice-cn",
+        "wpsoffice"
+      ],
+      "website": "https://platform.wps.cn/",
+      "dock_apps": [
+        "wpsoffice.app",
+        "WPS Office.app"
+      ]
+    },
+    {
+      "id": "featured-neteasemusic",
+      "name": "网易云音乐",
+      "region": "cn",
+      "category": "影音娱乐",
+      "description": "网易云音乐 macOS 官方客户端",
+      "tags": [
+        "音乐",
+        "热门"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "neteasemusic"
+      ],
+      "website": "https://music.163.com/#/download",
+      "dock_apps": [
+        "NeteaseMusic.app",
+        "网易云音乐.app"
+      ]
+    },
+    {
+      "id": "featured-qqmusic",
+      "name": "QQ 音乐",
+      "region": "cn",
+      "category": "影音娱乐",
+      "description": "曲库丰富的 QQ 音乐 macOS 桌面端",
+      "tags": [
+        "音乐"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "qqmusic"
+      ],
+      "website": "https://y.qq.com/download/download.html",
+      "dock_apps": [
+        "QQMusic.app",
+        "QQ音乐.app"
+      ]
+    },
+    {
+      "id": "featured-bilibili",
+      "name": "哔哩哔哩",
+      "region": "cn",
+      "category": "影音娱乐",
+      "description": "B 站官方 macOS 原生客户端，支持弹幕与高帧率播放",
+      "tags": [
+        "视频",
+        "热门"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "bilibili"
+      ],
+      "website": "https://app.bilibili.com/",
+      "dock_apps": [
+        "哔哩哔哩.app",
+        "Bilibili.app"
+      ]
+    },
+    {
+      "id": "featured-baidunetdisk",
+      "name": "百度网盘",
+      "region": "cn",
+      "category": "浏览与网络",
+      "description": "国内常用云盘存储与大文件分享客户端",
+      "tags": [
+        "网盘"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "baidunetdisk"
+      ],
+      "website": "https://pan.baidu.com/download",
+      "dock_apps": [
+        "BaiduNetdisk_mac.app",
+        "百度网盘.app"
+      ]
+    },
+    {
+      "id": "featured-quark",
+      "name": "夸克网盘",
+      "region": "cn",
+      "category": "浏览与网络",
+      "description": "高速上传下载的夸克网盘 macOS 桌面客户端",
+      "tags": [
+        "网盘"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "quarkclouddrive"
+      ],
+      "website": "https://pan.quark.cn/",
+      "dock_apps": [
+        "QuarkCloudDrive.app",
+        "夸克网盘.app"
+      ]
+    },
+    {
+      "id": "featured-yuque",
+      "name": "语雀",
+      "region": "cn",
+      "category": "日常办公",
+      "description": "蚂蚁集团出品的中文知识库与云端文档工具",
+      "tags": [
+        "笔记",
+        "中文友好"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "yuque"
+      ],
+      "website": "https://www.yuque.com/download",
+      "dock_apps": [
+        "语雀.app",
+        "Yuque.app"
+      ]
+    },
+    {
+      "id": "featured-snipaste",
+      "name": "Snipaste",
+      "region": "cn",
+      "category": "菜单栏常驻",
+      "description": "轻量精准的截图与屏幕贴图工具，常驻菜单栏",
+      "tags": [
+        "必备",
+        "免费"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "snipaste"
+      ],
+      "website": "https://www.snipaste.com/download.html",
+      "dock_apps": []
+    },
+    {
+      "id": "featured-bob",
+      "name": "Bob",
+      "region": "cn",
+      "category": "菜单栏常驻",
+      "description": "macOS 划词翻译与截图 OCR 效率工具",
+      "tags": [
+        "效率",
+        "中文友好"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "bob"
+      ],
+      "website": "https://bobtranslate.com/",
+      "dock_apps": []
+    },
+    {
+      "id": "featured-input-source-pro",
+      "name": "Input Source Pro",
+      "region": "cn",
+      "category": "菜单栏常驻",
+      "description": "按应用自动切换中英文输入法并在光标旁提示状态",
+      "tags": [
+        "必备",
+        "免费"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "input-source-pro"
+      ],
+      "website": "https://inputsource.pro/",
+      "dock_apps": []
+    },
+    {
+      "id": "featured-yuanbao",
+      "name": "腾讯元宝",
+      "region": "cn",
+      "category": "AI 工具",
+      "description": "腾讯混元与 DeepSeek 驱动的中文 AI 桌面助手",
+      "tags": [
+        "热门",
+        "免费"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "yuanbao",
+        "tencent-yuanbao"
+      ],
+      "website": "https://yuanbao.tencent.com/download",
+      "dock_apps": [
+        "元宝.app",
+        "Yuanbao.app",
+        "腾讯元宝.app"
+      ]
+    },
+    {
+      "id": "featured-doubao",
+      "name": "豆包",
+      "region": "cn",
+      "category": "AI 工具",
+      "description": "字节跳动推出的全能中文 AI 对话与伴读桌面端",
+      "tags": [
+        "热门",
+        "免费"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "doubao"
+      ],
+      "website": "https://www.doubao.com/download/desktop",
+      "dock_apps": [
+        "豆包.app",
+        "Doubao.app"
+      ]
+    },
+    {
+      "id": "featured-trae",
+      "name": "Trae",
+      "region": "cn",
+      "category": "软件开发",
+      "description": "面向中文开发者体验友好的 AI 原生 IDE",
+      "tags": [
+        "AI 编程",
+        "免费"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "trae-cn",
+        "trae"
+      ],
+      "website": "https://www.trae.cn/download",
+      "dock_apps": [
+        "Trae CN.app",
+        "Trae.app"
+      ]
+    },
+    {
+      "id": "featured-cherry-studio",
+      "name": "Cherry Studio",
+      "region": "cn",
+      "category": "AI 工具",
+      "description": "支持多大模型 API、知识库与 MCP 的开源桌面客户端",
+      "tags": [
+        "开源",
+        "热门"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "cherry-studio"
+      ],
+      "github_repo": "CherryHQ/cherry-studio",
+      "website": "https://cherry-ai.com/",
+      "dock_apps": [
+        "Cherry Studio.app"
+      ]
+    },
+    {
+      "id": "featured-chrome",
+      "name": "Google Chrome",
+      "region": "global",
+      "category": "浏览与网络",
+      "description": "生态最完善的跨平台网页浏览器",
+      "tags": [
+        "必备",
+        "热门"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "google-chrome"
+      ],
+      "website": "https://www.google.com/chrome/",
+      "dock_apps": [
+        "Google Chrome.app"
+      ]
+    },
+    {
+      "id": "featured-arc",
+      "name": "Arc",
+      "region": "global",
+      "category": "浏览与网络",
+      "description": "侧边栏空间管理与极简设计的新一代 macOS 浏览器",
+      "tags": [
+        "热门",
+        "免费"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "arc"
+      ],
+      "website": "https://arc.net/",
+      "dock_apps": [
+        "Arc.app"
+      ]
+    },
+    {
+      "id": "featured-raycast",
+      "name": "Raycast",
+      "region": "global",
+      "category": "日常办公",
+      "description": "极速 Mac 效率启动器，支持剪贴板历史、窗口管理与海量插件",
+      "tags": [
+        "必备",
+        "免费"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "raycast"
+      ],
+      "website": "https://www.raycast.com/",
+      "dock_apps": [
+        "Raycast.app"
+      ]
+    },
+    {
+      "id": "featured-shottr",
+      "name": "Shottr",
+      "region": "global",
+      "category": "菜单栏常驻",
+      "description": "Apple Silicon 原生超快截图工具，支持滚动长截图与 OCR",
+      "tags": [
+        "原生",
+        "免费"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "shottr"
+      ],
+      "website": "https://shottr.cc/",
+      "dock_apps": []
+    },
+    {
+      "id": "featured-keka",
+      "name": "Keka",
+      "region": "global",
+      "category": "系统与工具",
+      "description": "macOS 最好用的免费开源解压缩工具，支持 7z / zip / rar",
+      "tags": [
+        "必备",
+        "开源"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "keka"
+      ],
+      "github_repo": "aonez/Keka",
+      "website": "https://www.keka.io/",
+      "dock_apps": [
+        "Keka.app"
+      ]
+    },
+    {
+      "id": "featured-iina",
+      "name": "IINA",
+      "region": "global",
+      "category": "影音娱乐",
+      "description": "专为 macOS 设计的现代开源全能视频播放器",
+      "tags": [
+        "必备",
+        "开源"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "iina"
+      ],
+      "github_repo": "iina/iina",
+      "website": "https://iina.io/",
+      "dock_apps": [
+        "IINA.app"
+      ]
+    },
+    {
+      "id": "featured-rectangle",
+      "name": "Rectangle",
+      "region": "global",
+      "category": "菜单栏常驻",
+      "description": "简洁好用的开源窗口分屏与快捷键排列工具",
+      "tags": [
+        "开源",
+        "免费"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "rectangle"
+      ],
+      "github_repo": "rxhanson/Rectangle",
+      "website": "https://rectangleapp.com/",
+      "dock_apps": []
+    },
+    {
+      "id": "featured-appcleaner",
+      "name": "AppCleaner",
+      "region": "global",
+      "category": "系统与工具",
+      "description": "拖拽即可彻底清理 Mac 应用及其残留配置文件",
+      "tags": [
+        "必备",
+        "免费"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "appcleaner"
+      ],
+      "website": "https://freemacsoft.net/appcleaner/",
+      "dock_apps": [
+        "AppCleaner.app"
+      ]
+    },
+    {
+      "id": "featured-chatgpt",
+      "name": "ChatGPT",
+      "region": "global",
+      "category": "AI 工具",
+      "description": "OpenAI 官方 macOS 桌面客户端，支持快捷键全局唤起",
+      "tags": [
+        "热门",
+        "官方"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "chatgpt"
+      ],
+      "website": "https://openai.com/chatgpt/download/",
+      "dock_apps": [
+        "ChatGPT.app"
+      ]
+    },
+    {
+      "id": "featured-claude",
+      "name": "Claude",
+      "region": "global",
+      "category": "AI 工具",
+      "description": "Anthropic 官方 macOS 桌面端，支持 MCP 与深度写作编程",
+      "tags": [
+        "热门",
+        "官方"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "claude"
+      ],
+      "website": "https://claude.ai/download",
+      "dock_apps": [
+        "Claude.app"
+      ]
+    },
+    {
+      "id": "featured-antigravity",
+      "name": "Google Antigravity",
+      "region": "global",
+      "category": "软件开发",
+      "description": "Google 推出的 AI 智能体编程与自动化工作台",
+      "tags": [
+        "热门",
+        "AI 编程"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "antigravity"
+      ],
+      "website": "https://antigravity.google/download",
+      "dock_apps": [
+        "Antigravity.app",
+        "Google Antigravity.app"
+      ]
+    },
+    {
+      "id": "featured-cursor",
+      "name": "Cursor",
+      "region": "global",
+      "category": "软件开发",
+      "description": "深度集成 AI 对话与自动补全的智能代码编辑器",
+      "tags": [
+        "热门",
+        "AI 编程"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "cursor"
+      ],
+      "website": "https://www.cursor.com/",
+      "dock_apps": [
+        "Cursor.app"
+      ]
+    },
+    {
+      "id": "featured-ollama",
+      "name": "Ollama",
+      "region": "global",
+      "category": "AI 工具",
+      "description": "在 Apple Silicon Mac 上一键本地运行大语言模型",
+      "tags": [
+        "开源",
+        "本地 AI"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "ollama"
+      ],
+      "github_repo": "ollama/ollama",
+      "website": "https://ollama.com/",
+      "dock_apps": [
+        "Ollama.app"
+      ]
+    },
+    {
+      "id": "featured-youtube-music",
+      "name": "YouTube Music",
+      "region": "global",
+      "category": "影音娱乐",
+      "description": "YouTube Music 桌面客户端，支持媒体键与后台播放",
+      "tags": [
+        "音乐",
+        "热门"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "ytmdesktop-youtube-music"
+      ],
+      "website": "https://ytmdesktop.app/",
+      "dock_apps": [
+        "YouTube Music Desktop App.app"
+      ]
+    },
+    {
+      "id": "featured-spotify",
+      "name": "Spotify",
+      "region": "global",
+      "category": "影音娱乐",
+      "description": "全球主流流媒体音乐与播客平台",
+      "tags": [
+        "音乐"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "spotify"
+      ],
+      "website": "https://www.spotify.com/download/mac/",
+      "dock_apps": [
+        "Spotify.app"
+      ]
+    },
+    {
+      "id": "featured-telegram",
+      "name": "Telegram",
+      "region": "global",
+      "category": "日常办公",
+      "description": "快速、安全、支持多端云同步的即时通讯软件",
+      "tags": [
+        "热门",
+        "免费"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "telegram"
+      ],
+      "website": "https://macos.telegram.org/",
+      "dock_apps": [
+        "Telegram.app"
+      ]
+    },
+    {
+      "id": "featured-discord",
+      "name": "Discord",
+      "region": "global",
+      "category": "日常办公",
+      "description": "全球开发者与游戏社区最常用的语音与频道聊天工具",
+      "tags": [
+        "社区",
+        "免费"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "discord"
+      ],
+      "website": "https://discord.com/",
+      "dock_apps": [
+        "Discord.app"
+      ]
+    },
+    {
+      "id": "featured-obsidian",
+      "name": "Obsidian",
+      "region": "global",
+      "category": "日常办公",
+      "description": "本地 Markdown 双链笔记与个人知识库神器",
+      "tags": [
+        "热门",
+        "免费"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "obsidian"
+      ],
+      "website": "https://obsidian.md/",
+      "dock_apps": [
+        "Obsidian.app"
+      ]
+    },
+    {
+      "id": "featured-notion",
+      "name": "Notion",
+      "region": "global",
+      "category": "日常办公",
+      "description": "集文档、数据库与项目协作于一体的全能工作区",
+      "tags": [
+        "热门"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "notion"
+      ],
+      "website": "https://www.notion.so/desktop",
+      "dock_apps": [
+        "Notion.app"
+      ]
+    },
+    {
+      "id": "featured-steam",
+      "name": "Steam",
+      "region": "global",
+      "category": "游戏平台",
+      "description": "Valve 官方游戏商店与社区平台",
+      "tags": [
+        "游戏"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "steam"
+      ],
+      "website": "https://store.steampowered.com/about/",
+      "dock_apps": [
+        "Steam.app"
+      ]
+    },
+    {
+      "id": "featured-vscode",
+      "name": "Visual Studio Code",
+      "region": "global",
+      "category": "软件开发",
+      "description": "微软开源的跨平台全能代码编辑器",
+      "tags": [
+        "必备",
+        "开源"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "visual-studio-code"
+      ],
+      "website": "https://code.visualstudio.com/",
+      "dock_apps": [
+        "Visual Studio Code.app"
+      ]
+    },
+    {
+      "id": "featured-ghostty",
+      "name": "Ghostty",
+      "region": "global",
+      "category": "软件开发",
+      "description": "GPU 加速的原生 macOS 高性能现代终端",
+      "tags": [
+        "热门",
+        "开源"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "ghostty"
+      ],
+      "website": "https://ghostty.org/",
+      "dock_apps": [
+        "Ghostty.app"
+      ]
+    },
+    {
+      "id": "featured-iterm2",
+      "name": "iTerm2",
+      "region": "global",
+      "category": "软件开发",
+      "description": "macOS 开发者最经典的增强型终端替代品",
+      "tags": [
+        "经典",
+        "开源"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "iterm2"
+      ],
+      "website": "https://iterm2.com/",
+      "dock_apps": [
+        "iTerm.app"
+      ]
+    },
+    {
+      "id": "featured-orbstack",
+      "name": "OrbStack",
+      "region": "global",
+      "category": "软件开发",
+      "description": "比 Docker Desktop 更快更省电的 macOS 容器与 Linux 虚拟机",
+      "tags": [
+        "热门",
+        "轻量"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "orbstack"
+      ],
+      "website": "https://orbstack.dev/",
+      "dock_apps": [
+        "OrbStack.app"
+      ]
+    },
+    {
+      "id": "featured-github-desktop",
+      "name": "GitHub Desktop",
+      "region": "global",
+      "category": "软件开发",
+      "description": "GitHub 官方可视化 Git 仓库客户端",
+      "tags": [
+        "官方",
+        "免费"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "github"
+      ],
+      "website": "https://desktop.github.com/",
+      "dock_apps": [
+        "GitHub Desktop.app"
+      ]
+    },
+    {
+      "id": "featured-sublime-text",
+      "name": "Sublime Text",
+      "region": "global",
+      "category": "软件开发",
+      "description": "启动极快、大文件流畅的经典文本与代码编辑器",
+      "tags": [
+        "轻量"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "sublime-text"
+      ],
+      "website": "https://www.sublimetext.com/download",
+      "dock_apps": [
+        "Sublime Text.app"
+      ]
+    },
+    {
+      "id": "featured-jetbrains-toolbox",
+      "name": "JetBrains Toolbox",
+      "region": "global",
+      "category": "菜单栏常驻",
+      "description": "统一安装与更新 IDEA、WebStorm、PyCharm 等全家桶 IDE",
+      "tags": [
+        "官方"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "jetbrains-toolbox"
+      ],
+      "website": "https://www.jetbrains.com/toolbox-app/",
+      "dock_apps": []
+    },
+    {
+      "id": "featured-bruno",
+      "name": "Bruno",
+      "region": "global",
+      "category": "软件开发",
+      "description": "本地优先、Git 友好的开源 API 调试工具，替代 Postman",
+      "tags": [
+        "开源",
+        "免费"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "bruno"
+      ],
+      "github_repo": "usebruno/bruno",
+      "website": "https://www.usebruno.com/",
+      "dock_apps": [
+        "Bruno.app"
+      ]
+    },
+    {
+      "id": "featured-clash-verge-rev",
+      "name": "Clash Verge Rev",
+      "region": "global",
+      "category": "浏览与网络",
+      "description": "基于 Tauri 构建的跨平台网络代理客户端",
+      "tags": [
+        "热门",
+        "开源"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "clash-verge-rev"
+      ],
+      "github_repo": "clash-verge-rev/clash-verge-rev",
+      "website": "https://github.com/clash-verge-rev/clash-verge-rev/releases",
+      "dock_apps": [
+        "Clash Verge.app",
+        "Clash Verge Rev.app"
+      ]
+    },
+    {
+      "id": "featured-localsend",
+      "name": "LocalSend",
+      "region": "global",
+      "category": "浏览与网络",
+      "description": "跨平台局域网文件互传神器（Mac / Windows / iOS / Android）",
+      "tags": [
+        "必备",
+        "开源"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "localsend"
+      ],
+      "github_repo": "localsend/localsend",
+      "website": "https://localsend.org/",
+      "dock_apps": [
+        "LocalSend.app"
+      ]
+    },
+    {
+      "id": "featured-stats",
+      "name": "Stats",
+      "region": "global",
+      "category": "菜单栏常驻",
+      "description": "在 macOS 菜单栏实时监控 CPU、内存、网速与温度的开源工具",
+      "tags": [
+        "开源",
+        "免费"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "stats"
+      ],
+      "github_repo": "exelban/stats",
+      "website": "https://github.com/exelban/stats",
+      "dock_apps": []
+    },
+    {
+      "id": "featured-monitorcontrol",
+      "name": "MonitorControl",
+      "region": "global",
+      "category": "菜单栏常驻",
+      "description": "用 Mac 键盘快捷键直接调节外接显示器亮度与音量",
+      "tags": [
+        "必备",
+        "开源"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "monitorcontrol"
+      ],
+      "github_repo": "MonitorControl/MonitorControl",
+      "website": "https://github.com/MonitorControl/MonitorControl",
+      "dock_apps": []
+    },
+    {
+      "id": "featured-motrix",
+      "name": "Motrix",
+      "region": "global",
+      "category": "浏览与网络",
+      "description": "颜值出众的全能开源下载器，支持 HTTP / BT / 磁力链接",
+      "tags": [
+        "开源",
+        "免费"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "motrix"
+      ],
+      "github_repo": "agalwood/Motrix",
+      "website": "https://motrix.app/",
+      "dock_apps": [
+        "Motrix.app"
+      ]
+    },
+    {
+      "id": "featured-figma",
+      "name": "Figma",
+      "region": "global",
+      "category": "设计创作",
+      "description": "现代协作式 UI/UX 界面设计工具",
+      "tags": [
+        "设计",
+        "UI"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "figma"
+      ],
+      "website": "https://www.figma.com/",
+      "dock_apps": [
+        "Figma.app"
+      ]
+    },
+    {
+      "id": "featured-blender",
+      "name": "Blender",
+      "region": "global",
+      "category": "游戏开发",
+      "description": "开源免费的全能 3D 建模与动画渲染套件",
+      "tags": [
+        "3D",
+        "开源"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "blender"
+      ],
+      "website": "https://www.blender.org/",
+      "dock_apps": [
+        "Blender.app"
+      ]
+    },
+    {
+      "id": "featured-godot",
+      "name": "Godot",
+      "region": "global",
+      "category": "游戏开发",
+      "description": "开源免费的轻量级跨平台 2D/3D 游戏引擎",
+      "tags": [
+        "引擎",
+        "开源"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "godot"
+      ],
+      "website": "https://godotengine.org/",
+      "dock_apps": [
+        "Godot.app"
+      ]
+    },
+    {
+      "id": "featured-unity-hub",
+      "name": "Unity Hub",
+      "region": "global",
+      "category": "游戏开发",
+      "description": "Unity 游戏引擎版本与项目管理中心",
+      "tags": [
+        "引擎"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "unity-hub"
+      ],
+      "website": "https://unity.com/",
+      "dock_apps": [
+        "Unity Hub.app"
+      ]
+    },
+    {
+      "id": "featured-epic-games",
+      "name": "Epic Games",
+      "region": "global",
+      "category": "游戏平台",
+      "description": "Epic Games Store 官方游戏与虚幻引擎启动器",
+      "tags": [
+        "游戏"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "epic-games"
+      ],
+      "website": "https://store.epicgames.com/",
+      "dock_apps": [
+        "Epic Games Launcher.app"
+      ]
+    },
+    {
+      "id": "featured-aliyundrive",
+      "name": "阿里云盘",
+      "region": "cn",
+      "category": "浏览与网络",
+      "description": "阿里出品的不限速云盘存储与同步客户端",
+      "tags": [
+        "网盘"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "aliyundrive"
+      ],
+      "website": "https://www.alipan.com/",
+      "dock_apps": [
+        "aDrive.app",
+        "阿里云盘.app"
+      ]
+    },
+    {
+      "id": "featured-thunder",
+      "name": "迅雷",
+      "region": "cn",
+      "category": "浏览与网络",
+      "description": "支持 BT / 磁力链 / HTTP 多协议高速下载工具",
+      "tags": [
+        "下载"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "thunder"
+      ],
+      "website": "https://www.xunlei.com/",
+      "dock_apps": [
+        "Thunder.app",
+        "迅雷.app"
+      ]
+    },
+    {
+      "id": "featured-workbuddy",
+      "name": "WorkBuddy",
+      "region": "cn",
+      "category": "AI 工具",
+      "description": "腾讯出品的 AI 办公协作与效率助手",
+      "tags": [
+        "AI",
+        "办公"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "workbuddy-cn",
+        "workbuddy-ai"
+      ],
+      "website": "https://copilot.tencent.com/work/",
+      "dock_apps": [
+        "WorkBuddy.app"
+      ]
+    },
+    {
+      "id": "featured-chatbox",
+      "name": "Chatbox",
+      "region": "cn",
+      "category": "AI 工具",
+      "description": "轻量简洁的跨平台多模型 AI 桌面客户端",
+      "tags": [
+        "开源",
+        "免费"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "chatbox"
+      ],
+      "github_repo": "Bin-Huang/chatbox",
+      "website": "https://chatboxai.app/",
+      "dock_apps": [
+        "chatbox.app",
+        "Chatbox.app"
+      ]
+    },
+    {
+      "id": "featured-ticktick",
+      "name": "滴答清单",
+      "region": "cn",
+      "category": "日常办公",
+      "description": "集待办事项、番茄钟、日历与习惯打卡于一体的时间管理工具",
+      "tags": [
+        "效率",
+        "热门"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "ticktick"
+      ],
+      "website": "https://dida365.com/",
+      "dock_apps": [
+        "TickTick.app",
+        "滴答清单.app"
+      ]
+    },
+    {
+      "id": "featured-eudic",
+      "name": "欧路词典",
+      "region": "cn",
+      "category": "日常办公",
+      "description": "支持自定义 MDX 词库与划词取词的权威英语词典",
+      "tags": [
+        "学习",
+        "免费"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "eudic"
+      ],
+      "website": "https://www.eudic.net/v4/en/app/eudic",
+      "dock_apps": [
+        "Eudic.app",
+        "欧路词典.app"
+      ]
+    },
+    {
+      "id": "featured-xmind",
+      "name": "Xmind",
+      "region": "cn",
+      "category": "日常办公",
+      "description": "全功能思维导图与头脑风暴桌面工具",
+      "tags": [
+        "思维导图",
+        "热门"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "xmind"
+      ],
+      "website": "https://xmind.cn/",
+      "dock_apps": [
+        "Xmind.app",
+        "XMind.app"
+      ]
+    },
+    {
+      "id": "featured-typora",
+      "name": "Typora",
+      "region": "cn",
+      "category": "日常办公",
+      "description": "极简所见即所得的 Markdown 写作与阅读编辑器",
+      "tags": [
+        "写作",
+        "热门"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "typora"
+      ],
+      "website": "https://typoraio.cn/",
+      "dock_apps": [
+        "Typora.app"
+      ]
+    },
+    {
+      "id": "featured-openidea",
+      "name": "OpenIDEA",
+      "region": "cn",
+      "category": "软件开发",
+      "description": "来自 GitHub Releases 的开源 IDE 助手",
+      "tags": [
+        "IDE",
+        "开源"
+      ],
+      "kind": "github",
+      "brew_casks": [],
+      "github_repo": "l0ng-ai/openidea",
+      "website": "https://github.com/l0ng-ai/openidea/releases",
+      "dock_apps": [
+        "OpenIDEA.app",
+        "openidea.app"
+      ]
+    },
+    {
+      "id": "featured-apifox",
+      "name": "Apifox",
+      "region": "cn",
+      "category": "软件开发",
+      "description": "集 API 文档、调试、Mock 与自动化测试于一体的协作平台",
+      "tags": [
+        "API",
+        "热门"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "apifox"
+      ],
+      "website": "https://apifox.com/",
+      "dock_apps": [
+        "Apifox.app"
+      ]
+    },
+    {
+      "id": "featured-wechatwebdevtools",
+      "name": "微信开发者工具",
+      "region": "cn",
+      "category": "软件开发",
+      "description": "微信小程序与公众号官方集成开发环境",
+      "tags": [
+        "小程序",
+        "官方"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "wechatwebdevtools"
+      ],
+      "website": "https://developers.weixin.qq.com/miniprogram/dev/devtools/download.html",
+      "dock_apps": [
+        "wechatwebdevtools.app"
+      ]
+    },
+    {
+      "id": "featured-hbuilderx",
+      "name": "HBuilderX",
+      "region": "cn",
+      "category": "软件开发",
+      "description": "DCloud 出品的 uni-app 与前端轻量极速开发工具",
+      "tags": [
+        "前端",
+        "免费"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "hbuilderx"
+      ],
+      "website": "https://www.dcloud.io/hbuilderx.html",
+      "dock_apps": [
+        "HBuilderX.app"
+      ]
+    },
+    {
+      "id": "featured-finalshell",
+      "name": "FinalShell",
+      "region": "cn",
+      "category": "软件开发",
+      "description": "集成服务器监控、SFTP 与远程终端的一体化 SSH 工具",
+      "tags": [
+        "SSH",
+        "运维"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "finalshell"
+      ],
+      "website": "https://www.hostbuf.com/",
+      "dock_apps": [
+        "FinalShell.app"
+      ]
+    },
+    {
+      "id": "featured-navicat-lite",
+      "name": "Navicat Premium Lite",
+      "region": "cn",
+      "category": "软件开发",
+      "description": "免费版多数据库图形化管理工具，支持 MySQL / PostgreSQL / Redis",
+      "tags": [
+        "数据库",
+        "免费"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "navicat-premium-lite"
+      ],
+      "website": "https://www.navicat.com.cn/products/navicat-premium-lite",
+      "dock_apps": [
+        "Navicat Premium Lite.app"
+      ]
+    },
+    {
+      "id": "featured-jianyingpro",
+      "name": "剪映专业版",
+      "region": "cn",
+      "category": "设计创作",
+      "description": "字节跳动出品的全能视频剪辑软件，支持智能字幕与丰富素材",
+      "tags": [
+        "剪辑",
+        "热门"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "jianyingpro"
+      ],
+      "website": "https://www.capcut.cn/",
+      "dock_apps": [
+        "VideoFusion-macOS.app",
+        "JianyingPro.app",
+        "剪映专业版.app"
+      ]
+    },
+    {
+      "id": "featured-mastergo",
+      "name": "MasterGo",
+      "region": "cn",
+      "category": "设计创作",
+      "description": "面向中文团队的在线协作 UI/UX 界面设计工具",
+      "tags": [
+        "UI 设计",
+        "中文友好"
+      ],
+      "kind": "direct",
+      "brew_casks": [],
+      "website": "https://mastergo.com/download",
+      "dock_apps": [
+        "MasterGo.app"
+      ]
+    },
+    {
+      "id": "featured-iqiyi",
+      "name": "爱奇艺",
+      "region": "cn",
+      "category": "影音娱乐",
+      "description": "爱奇艺官方 macOS 高清视频客户端",
+      "tags": [
+        "视频"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "iqiyi"
+      ],
+      "website": "https://www.iqiyi.com/",
+      "dock_apps": [
+        "爱奇艺.app",
+        "iQIYI.app"
+      ]
+    },
+    {
+      "id": "featured-tencent-lemon",
+      "name": "腾讯柠檬清理",
+      "region": "cn",
+      "category": "系统与工具",
+      "description": "腾讯开源的 macOS 系统垃圾清理、重复文件查找与卸载工具",
+      "tags": [
+        "开源",
+        "免费"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "tencent-lemon"
+      ],
+      "github_repo": "Tencent/lemon-cleaner",
+      "website": "https://lemon.qq.com/",
+      "dock_apps": [
+        "Tencent Lemon.app"
+      ]
+    },
+    {
+      "id": "featured-ezip",
+      "name": "eZip",
+      "region": "cn",
+      "category": "系统与工具",
+      "description": "专为 macOS 设计的免费中文压缩与快速预览工具",
+      "tags": [
+        "压缩",
+        "免费"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "ezip"
+      ],
+      "website": "https://ezip.awehunt.com/",
+      "dock_apps": [
+        "eZip.app"
+      ]
+    },
+    {
+      "id": "featured-squirrel",
+      "name": "鼠须管 (Rime)",
+      "region": "cn",
+      "category": "菜单栏常驻",
+      "description": "开源高度可定制的 Rime 中州韵 macOS 中文输入法引擎",
+      "tags": [
+        "开源",
+        "输入法"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "squirrel"
+      ],
+      "github_repo": "rime/squirrel",
+      "website": "https://rime.im/",
+      "dock_apps": []
+    },
+    {
+      "id": "featured-sogouinput",
+      "name": "搜狗输入法",
+      "region": "cn",
+      "category": "菜单栏常驻",
+      "description": "词库丰富、云联想精准的中文拼音输入法",
+      "tags": [
+        "输入法"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "sogouinput"
+      ],
+      "website": "https://shurufa.sogou.com/mac",
+      "dock_apps": []
+    },
+    {
+      "id": "featured-firefox",
+      "name": "Firefox",
+      "region": "global",
+      "category": "浏览与网络",
+      "description": "Mozilla 开源注重隐私保护的跨平台浏览器",
+      "tags": [
+        "开源",
+        "隐私"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "firefox"
+      ],
+      "website": "https://www.mozilla.org/firefox/",
+      "dock_apps": [
+        "Firefox.app"
+      ]
+    },
+    {
+      "id": "featured-brave",
+      "name": "Brave",
+      "region": "global",
+      "category": "浏览与网络",
+      "description": "内置广告与追踪器拦截的高速隐私浏览器",
+      "tags": [
+        "隐私",
+        "开源"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "brave-browser"
+      ],
+      "website": "https://brave.com/",
+      "dock_apps": [
+        "Brave Browser.app"
+      ]
+    },
+    {
+      "id": "featured-zen",
+      "name": "Zen Browser",
+      "region": "global",
+      "category": "浏览与网络",
+      "description": "基于 Firefox 的高颜值垂直标签与工作区开源浏览器",
+      "tags": [
+        "开源",
+        "热门"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "zen"
+      ],
+      "github_repo": "zen-browser/desktop",
+      "website": "https://zen-browser.app/",
+      "dock_apps": [
+        "Zen.app",
+        "Zen Browser.app"
+      ]
+    },
+    {
+      "id": "featured-tailscale",
+      "name": "Tailscale",
+      "region": "global",
+      "category": "浏览与网络",
+      "description": "基于 WireGuard 的零配置跨设备异地组网神器",
+      "tags": [
+        "组网",
+        "热门"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "tailscale"
+      ],
+      "website": "https://tailscale.com/",
+      "dock_apps": [
+        "Tailscale.app"
+      ]
+    },
+    {
+      "id": "featured-lm-studio",
+      "name": "LM Studio",
+      "region": "global",
+      "category": "AI 工具",
+      "description": "带图形界面的本地开源大模型下载、运行与调试工具",
+      "tags": [
+        "本地 AI",
+        "热门"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "lm-studio"
+      ],
+      "website": "https://lmstudio.ai/",
+      "dock_apps": [
+        "LM Studio.app"
+      ]
+    },
+    {
+      "id": "featured-jan",
+      "name": "Jan",
+      "region": "global",
+      "category": "AI 工具",
+      "description": "离线优先的开源本地大模型与云端 API 对话客户端",
+      "tags": [
+        "开源",
+        "本地 AI"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "jan"
+      ],
+      "github_repo": "menloresearch/jan",
+      "website": "https://jan.ai/",
+      "dock_apps": [
+        "Jan.app"
+      ]
+    },
+    {
+      "id": "featured-perplexity",
+      "name": "Perplexity",
+      "region": "global",
+      "category": "AI 工具",
+      "description": "支持联网溯源与深度研究的 AI 搜索引擎官方桌面端",
+      "tags": [
+        "AI 搜索",
+        "官方"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "perplexity"
+      ],
+      "website": "https://www.perplexity.ai/",
+      "dock_apps": [
+        "Perplexity.app"
+      ]
+    },
+    {
+      "id": "featured-slack",
+      "name": "Slack",
+      "region": "global",
+      "category": "日常办公",
+      "description": "国际团队最常用的频道协作与开发通知沟通平台",
+      "tags": [
+        "办公",
+        "团队"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "slack"
+      ],
+      "website": "https://slack.com/downloads/mac",
+      "dock_apps": [
+        "Slack.app"
+      ]
+    },
+    {
+      "id": "featured-zoom",
+      "name": "Zoom",
+      "region": "global",
+      "category": "日常办公",
+      "description": "全球通用的高清视频会议与在线研讨会客户端",
+      "tags": [
+        "会议"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "zoom"
+      ],
+      "website": "https://zoom.us/download",
+      "dock_apps": [
+        "zoom.us.app"
+      ]
+    },
+    {
+      "id": "featured-logseq",
+      "name": "Logseq",
+      "region": "global",
+      "category": "日常办公",
+      "description": "开源本地大纲式双链笔记与个人知识管理工具",
+      "tags": [
+        "开源",
+        "笔记"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "logseq"
+      ],
+      "github_repo": "logseq/logseq",
+      "website": "https://logseq.com/",
+      "dock_apps": [
+        "Logseq.app"
+      ]
+    },
+    {
+      "id": "featured-zed",
+      "name": "Zed",
+      "region": "global",
+      "category": "软件开发",
+      "description": "Rust 编写的 GPU 加速超快开源现代代码编辑器",
+      "tags": [
+        "开源",
+        "热门"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "zed"
+      ],
+      "github_repo": "zed-industries/zed",
+      "website": "https://zed.dev/",
+      "dock_apps": [
+        "Zed.app"
+      ]
+    },
+    {
+      "id": "featured-warp",
+      "name": "Warp",
+      "region": "global",
+      "category": "软件开发",
+      "description": "内置 AI 命令补全与现代区块交互的智能终端",
+      "tags": [
+        "终端",
+        "AI"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "warp"
+      ],
+      "website": "https://www.warp.dev/",
+      "dock_apps": [
+        "Warp.app"
+      ]
+    },
+    {
+      "id": "featured-windsurf",
+      "name": "Windsurf",
+      "region": "global",
+      "category": "软件开发",
+      "description": "Codeium 推出的 Agentic AI 编程 IDE",
+      "tags": [
+        "AI 编程"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "windsurf"
+      ],
+      "website": "https://windsurf.com/",
+      "dock_apps": [
+        "Windsurf.app"
+      ]
+    },
+    {
+      "id": "featured-docker",
+      "name": "Docker Desktop",
+      "region": "global",
+      "category": "软件开发",
+      "description": "官方容器与 Kubernetes 本地开发桌面环境",
+      "tags": [
+        "容器",
+        "官方"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "docker"
+      ],
+      "website": "https://www.docker.com/products/docker-desktop/",
+      "dock_apps": [
+        "Docker.app"
+      ]
+    },
+    {
+      "id": "featured-postman",
+      "name": "Postman",
+      "region": "global",
+      "category": "软件开发",
+      "description": "经典全功能 API 接口调试、测试与文档平台",
+      "tags": [
+        "API"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "postman"
+      ],
+      "website": "https://www.postman.com/",
+      "dock_apps": [
+        "Postman.app"
+      ]
+    },
+    {
+      "id": "featured-tableplus",
+      "name": "TablePlus",
+      "region": "global",
+      "category": "软件开发",
+      "description": "macOS 原生高速多数据库客户端，界面清爽流畅",
+      "tags": [
+        "数据库",
+        "原生"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "tableplus"
+      ],
+      "website": "https://tableplus.com/",
+      "dock_apps": [
+        "TablePlus.app"
+      ]
+    },
+    {
+      "id": "featured-dbeaver",
+      "name": "DBeaver Community",
+      "region": "global",
+      "category": "软件开发",
+      "description": "免费开源的通用数据库管理与 SQL 编辑器",
+      "tags": [
+        "数据库",
+        "开源"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "dbeaver-community"
+      ],
+      "github_repo": "dbeaver/dbeaver",
+      "website": "https://dbeaver.io/",
+      "dock_apps": [
+        "DBeaver.app"
+      ]
+    },
+    {
+      "id": "featured-fork",
+      "name": "Fork",
+      "region": "global",
+      "category": "软件开发",
+      "description": "快速优雅的 macOS 原生 Git 图形化客户端",
+      "tags": [
+        "Git",
+        "原生"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "fork"
+      ],
+      "website": "https://git-fork.com/",
+      "dock_apps": [
+        "Fork.app"
+      ]
+    },
+    {
+      "id": "featured-proxyman",
+      "name": "Proxyman",
+      "region": "global",
+      "category": "软件开发",
+      "description": "macOS 原生现代 HTTP/HTTPS 抓包与网络调试工具",
+      "tags": [
+        "抓包",
+        "原生"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "proxyman"
+      ],
+      "website": "https://proxyman.io/",
+      "dock_apps": [
+        "Proxyman.app"
+      ]
+    },
+    {
+      "id": "featured-termius",
+      "name": "Termius",
+      "region": "global",
+      "category": "软件开发",
+      "description": "支持多端云同步的高颜值现代 SSH / SFTP 客户端",
+      "tags": [
+        "SSH"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "termius"
+      ],
+      "website": "https://termius.com/",
+      "dock_apps": [
+        "Termius.app"
+      ]
+    },
+    {
+      "id": "featured-aseprite",
+      "name": "Aseprite",
+      "region": "global",
+      "category": "游戏开发",
+      "description": "专业像素画绘制与 2D 精灵动画制作工具",
+      "tags": [
+        "像素画"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "aseprite"
+      ],
+      "website": "https://www.aseprite.org/",
+      "dock_apps": [
+        "Aseprite.app"
+      ]
+    },
+    {
+      "id": "featured-tiled",
+      "name": "Tiled",
+      "region": "global",
+      "category": "游戏开发",
+      "description": "免费开源的 2D 瓦片游戏地图与关卡编辑器",
+      "tags": [
+        "开源",
+        "地图"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "tiled"
+      ],
+      "github_repo": "mapeditor/tiled",
+      "website": "https://www.mapeditor.org/",
+      "dock_apps": [
+        "Tiled.app"
+      ]
+    },
+    {
+      "id": "featured-obs",
+      "name": "OBS Studio",
+      "region": "global",
+      "category": "设计创作",
+      "description": "免费开源的专业录屏与直播推流软件",
+      "tags": [
+        "开源",
+        "录屏"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "obs"
+      ],
+      "github_repo": "obsproject/obs-studio",
+      "website": "https://obsproject.com/",
+      "dock_apps": [
+        "OBS.app"
+      ]
+    },
+    {
+      "id": "featured-gimp",
+      "name": "GIMP",
+      "region": "global",
+      "category": "设计创作",
+      "description": "功能强大的免费开源跨平台图像编辑软件",
+      "tags": [
+        "开源",
+        "修图"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "gimp"
+      ],
+      "website": "https://www.gimp.org/",
+      "dock_apps": [
+        "GIMP.app"
+      ]
+    },
+    {
+      "id": "featured-inkscape",
+      "name": "Inkscape",
+      "region": "global",
+      "category": "设计创作",
+      "description": "专业免费开源 SVG 矢量图形设计软件",
+      "tags": [
+        "开源",
+        "矢量"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "inkscape"
+      ],
+      "website": "https://inkscape.org/",
+      "dock_apps": [
+        "Inkscape.app"
+      ]
+    },
+    {
+      "id": "featured-krita",
+      "name": "Krita",
+      "region": "global",
+      "category": "设计创作",
+      "description": "面向插画师与概念艺术家的免费开源数字绘画软件",
+      "tags": [
+        "开源",
+        "绘画"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "krita"
+      ],
+      "website": "https://krita.org/",
+      "dock_apps": [
+        "krita.app"
+      ]
+    },
+    {
+      "id": "featured-vlc",
+      "name": "VLC",
+      "region": "global",
+      "category": "影音娱乐",
+      "description": "老牌开源跨平台全格式本地与流媒体播放器",
+      "tags": [
+        "开源",
+        "视频"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "vlc"
+      ],
+      "website": "https://www.videolan.org/vlc/",
+      "dock_apps": [
+        "VLC.app"
+      ]
+    },
+    {
+      "id": "featured-calibre",
+      "name": "Calibre",
+      "region": "global",
+      "category": "影音娱乐",
+      "description": "开源电子书库管理、格式转换与阅读神器",
+      "tags": [
+        "开源",
+        "阅读"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "calibre"
+      ],
+      "website": "https://calibre-ebook.com/",
+      "dock_apps": [
+        "calibre.app"
+      ]
+    },
+    {
+      "id": "featured-audacity",
+      "name": "Audacity",
+      "region": "global",
+      "category": "影音娱乐",
+      "description": "免费开源多轨音频录制与剪辑工具",
+      "tags": [
+        "开源",
+        "音频"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "audacity"
+      ],
+      "github_repo": "audacity/audacity",
+      "website": "https://www.audacityteam.org/",
+      "dock_apps": [
+        "Audacity.app"
+      ]
+    },
+    {
+      "id": "featured-battle-net",
+      "name": "Battle.net",
+      "region": "global",
+      "category": "游戏平台",
+      "description": "暴雪战网官方游戏启动器与社区平台",
+      "tags": [
+        "游戏"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "battle-net"
+      ],
+      "website": "https://download.battle.net/",
+      "dock_apps": [
+        "Battle.net.app"
+      ]
+    },
+    {
+      "id": "featured-prismlauncher",
+      "name": "Prism Launcher",
+      "region": "global",
+      "category": "游戏平台",
+      "description": "开源高自由度 Minecraft 多实例与模组启动器",
+      "tags": [
+        "开源",
+        "游戏"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "prismlauncher"
+      ],
+      "github_repo": "PrismLauncher/PrismLauncher",
+      "website": "https://prismlauncher.org/",
+      "dock_apps": [
+        "Prism Launcher.app"
+      ]
+    },
+    {
+      "id": "featured-1password",
+      "name": "1Password",
+      "region": "global",
+      "category": "系统与工具",
+      "description": "广受好评的跨平台密码与密钥安全管理器",
+      "tags": [
+        "密码",
+        "安全"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "1password"
+      ],
+      "website": "https://1password.com/",
+      "dock_apps": [
+        "1Password.app"
+      ]
+    },
+    {
+      "id": "featured-bitwarden",
+      "name": "Bitwarden",
+      "region": "global",
+      "category": "系统与工具",
+      "description": "免费开源且支持自托管的跨平台密码管理器",
+      "tags": [
+        "开源",
+        "密码"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "bitwarden"
+      ],
+      "github_repo": "bitwarden/clients",
+      "website": "https://bitwarden.com/",
+      "dock_apps": [
+        "Bitwarden.app"
+      ]
+    },
+    {
+      "id": "featured-pearcleaner",
+      "name": "Pearcleaner",
+      "region": "global",
+      "category": "系统与工具",
+      "description": "开源清爽的 macOS 应用彻底卸载与残留清理工具",
+      "tags": [
+        "开源",
+        "免费"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "pearcleaner"
+      ],
+      "github_repo": "alienator88/Pearcleaner",
+      "website": "https://itsalin.com/appInfo/?id=pearcleaner",
+      "dock_apps": [
+        "Pearcleaner.app"
+      ]
+    },
+    {
+      "id": "featured-utm",
+      "name": "UTM",
+      "region": "global",
+      "category": "系统与工具",
+      "description": "基于 QEMU 的免费开源 macOS 虚拟机，原生支持 Apple Silicon",
+      "tags": [
+        "开源",
+        "虚拟机"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "utm"
+      ],
+      "github_repo": "utmapp/UTM",
+      "website": "https://mac.getutm.app/",
+      "dock_apps": [
+        "UTM.app"
+      ]
+    },
+    {
+      "id": "featured-maccy",
+      "name": "Maccy",
+      "region": "global",
+      "category": "菜单栏常驻",
+      "description": "极简快速的 macOS 开源剪贴板历史管理工具（常驻菜单栏）",
+      "tags": [
+        "开源",
+        "菜单栏"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "maccy"
+      ],
+      "github_repo": "p0deje/Maccy",
+      "website": "https://maccy.app/",
+      "dock_apps": []
+    },
+    {
+      "id": "featured-ice",
+      "name": "Ice",
+      "region": "global",
+      "category": "菜单栏常驻",
+      "description": "开源免费的 macOS 菜单栏图标折叠与外观管理工具",
+      "tags": [
+        "开源",
+        "菜单栏"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "jordanbaird-ice"
+      ],
+      "github_repo": "jordanbaird/Ice",
+      "website": "https://icemenubar.app/",
+      "dock_apps": []
+    },
+    {
+      "id": "featured-alttab",
+      "name": "AltTab",
+      "region": "global",
+      "category": "菜单栏常驻",
+      "description": "为 macOS 带来 Windows 风格带缩略图预览的窗口切换器",
+      "tags": [
+        "开源",
+        "菜单栏"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "alt-tab"
+      ],
+      "github_repo": "lwouis/alt-tab-macos",
+      "website": "https://alt-tab-macos.netlify.app/",
+      "dock_apps": []
+    },
+    {
+      "id": "featured-aldente",
+      "name": "AlDente",
+      "region": "global",
+      "category": "菜单栏常驻",
+      "description": "MacBook 电池充电上限限制与电池健康保护工具",
+      "tags": [
+        "电池",
+        "菜单栏"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "aldente"
+      ],
+      "github_repo": "AppHouseKitchen/AlDente-Charge-Limiter",
+      "website": "https://apphousekitchen.com/",
+      "dock_apps": []
+    },
+    {
+      "id": "featured-betterdisplay",
+      "name": "BetterDisplay",
+      "region": "global",
+      "category": "菜单栏常驻",
+      "description": "外接显示器 HiDPI 缩放、亮度与虚拟屏增强工具",
+      "tags": [
+        "显示器",
+        "菜单栏"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "betterdisplay"
+      ],
+      "github_repo": "waydabber/BetterDisplay",
+      "website": "https://github.com/waydabber/BetterDisplay",
+      "dock_apps": []
+    },
+    {
+      "id": "featured-karabiner",
+      "name": "Karabiner-Elements",
+      "region": "global",
+      "category": "菜单栏常驻",
+      "description": "功能强大的 macOS 开源键盘改键与组合键映射工具",
+      "tags": [
+        "开源",
+        "菜单栏"
+      ],
+      "kind": "cask",
+      "brew_casks": [
+        "karabiner-elements"
+      ],
+      "github_repo": "pqrs-org/Karabiner-Elements",
+      "website": "https://karabiner-elements.pqrs.org/",
+      "dock_apps": []
+    }
+  ]
+}

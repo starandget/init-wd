@@ -1,0 +1,26 @@
+[package]
+name = "star-box"
+version = "0.0.1"
+description = "Star Box — macOS 软件中心与装机助手"
+authors = ["starandget"]
+edition = "2021"
+
+[lib]
+name = "star_box_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon"] }
+tauri-plugin-opener = "2"
+tauri-plugin-dialog = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["full"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "stream", "rustls-tls", "socks"] }
+chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1", features = ["v4"] }
+futures-util = "0.3"
+base64 = "0.22"

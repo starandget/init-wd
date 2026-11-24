@@ -1,0 +1,88 @@
+name: Sync to Gitee
+
+on:
+  push:
+    branches:
+      - "**"
+    tags:
+      - "**"
+  workflow_dispatch:
+    inputs:
+      sync_latest_release:
+        description: "同时同步最新 GitHub Release 的 DMG 安装包到 Gitee"
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sync-gitee
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Mirror branches and tags to Gitee
+        env:
+          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
+          GITEE_USERNAME: ${{ secrets.GITEE_USERNAME || 'starandget' }}
+          GITEE_REPO: ${{ secrets.GITEE_REPO || 'star-box' }}
+        run: |
+          if [ -z "$GITEE_TOKEN" ]; then
+            echo "::error::Missing GITEE_TOKEN secret. Please add it in GitHub Settings -> Secrets and variables -> Actions."
+            exit 1
+          fi
+
+          git fetch --prune --tags origin "+refs/heads/*:refs/remotes/origin/*"
+          git remote set-head origin -d 2>/dev/null || true
+
+          REMOTE_URL="https://${GITEE_USERNAME}:${GITEE_TOKEN}@gitee.com/${GITEE_USERNAME}/${GITEE_REPO}.git"
+
+          git push --force --prune "$REMOTE_URL" "+refs/remotes/origin/*:refs/heads/*"
+          git push --force --prune "$REMOTE_URL" "+refs/tags/*:refs/tags/*"
+
+  sync-latest-release:
+    needs: sync
+    if: github.event_name == 'workflow_dispatch' && inputs.sync_latest_release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Sync latest GitHub Release DMGs to Gitee
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
+          GITEE_USERNAME: ${{ secrets.GITEE_USERNAME || 'starandget' }}
+          GITEE_REPO: ${{ secrets.GITEE_REPO || 'star-box' }}
+        run: |
+          if [ -z "$GITEE_TOKEN" ]; then
+            echo "::error::Missing GITEE_TOKEN secret."
+            exit 1
+          fi
+
+          TAG=$(gh release view --json tagName -q '.tagName' 2>/dev/null || true)
+          if [ -z "$TAG" ]; then
+            echo "No published GitHub Release found, skipping."
+            exit 0
+          fi
+
+          mkdir -p /tmp/release-dmgs
+          gh release download "$TAG" --pattern "*.dmg" --dir /tmp/release-dmgs
+
+          export RELEASE_TAG="$TAG"
+          export RELEASE_NAME
+          RELEASE_NAME=$(gh release view "$TAG" --json name -q '.name // ""')
+          export RELEASE_BODY
+          RELEASE_BODY=$(gh release view "$TAG" --json body -q '.body // ""')
+          export RELEASE_DIR="/tmp/release-dmgs"
+
+          bash .github/scripts/sync-gitee-release.sh

@@ -1,0 +1,124 @@
+name: Release macOS App
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-macos:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: aarch64-apple-darwin
+            label: Apple Silicon (arm64)
+          - target: x86_64-apple-darwin
+            label: Intel (x86_64)
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 12
+
+      - name: Setup Rust (${{ matrix.label }})
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build Tauri macOS bundle (${{ matrix.label }})
+        env:
+          APPLE_SIGNING_IDENTITY: "-"
+        run: pnpm tauri build --target ${{ matrix.target }}
+
+      - name: Verify app in DMG
+        shell: bash
+        run: |
+          shopt -s nullglob
+          images=(src-tauri/target/${{ matrix.target }}/release/bundle/dmg/*.dmg)
+          if [[ ${#images[@]} -ne 1 ]]; then
+            echo "Expected one DMG, found ${#images[@]}" >&2
+            exit 1
+          fi
+
+          hdiutil verify "${images[0]}"
+          mount_dir=$(mktemp -d)
+          trap 'hdiutil detach "$mount_dir" -force >/dev/null 2>&1 || true; rmdir "$mount_dir" 2>/dev/null || true' EXIT
+          hdiutil attach "${images[0]}" -readonly -nobrowse -noautoopen -mountpoint "$mount_dir"
+          codesign --verify --deep --strict --verbose=4 "$mount_dir/Star Box.app"
+          sig_info=$(codesign -dvv "$mount_dir/Star Box.app" 2>&1)
+          echo "$sig_info"
+          if echo "$sig_info" | grep -q "linker-signed"; then
+            echo "App is only linker-signed instead of bundle-signed!" >&2
+            exit 1
+          fi
+
+      - name: Upload verified DMG
+        if: github.ref_type != 'tag'
+        uses: actions/upload-artifact@v4
+        with:
+          name: star-box-${{ matrix.target }}
+          path: src-tauri/target/${{ matrix.target }}/release/bundle/dmg/*.dmg
+          if-no-files-found: error
+
+      - name: Publish Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/v')
+        with:
+          generate_release_notes: true
+          files: |
+            src-tauri/target/${{ matrix.target }}/release/bundle/dmg/*.dmg
+
+  sync-gitee-release:
+    needs: build-macos
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Sync tag and DMG assets to Gitee Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
+          GITEE_USERNAME: ${{ secrets.GITEE_USERNAME || 'starandget' }}
+          GITEE_REPO: ${{ secrets.GITEE_REPO || 'star-box' }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          if [ -z "$GITEE_TOKEN" ]; then
+            echo "::notice::GITEE_TOKEN not configured; skipping Gitee Release DMG sync."
+            exit 0
+          fi
+
+          # Ensure tag exists on Gitee before creating the Gitee Release
+          REMOTE_URL="https://${GITEE_USERNAME}:${GITEE_TOKEN}@gitee.com/${GITEE_USERNAME}/${GITEE_REPO}.git"
+          git push --force "$REMOTE_URL" "refs/tags/${RELEASE_TAG}:refs/tags/${RELEASE_TAG}"
+
+          mkdir -p /tmp/release-dmgs
+          gh release download "$RELEASE_TAG" --pattern "*.dmg" --dir /tmp/release-dmgs
+
+          export RELEASE_NAME
+          RELEASE_NAME=$(gh release view "$RELEASE_TAG" --json name -q '.name // ""')
+          export RELEASE_BODY
+          RELEASE_BODY=$(gh release view "$RELEASE_TAG" --json body -q '.body // ""')
+          export RELEASE_DIR="/tmp/release-dmgs"
+
+          bash .github/scripts/sync-gitee-release.sh
