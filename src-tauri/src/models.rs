@@ -78,6 +78,8 @@ pub struct InstallProgressEvent {
     pub progress: Option<u8>,
     pub done: bool,
     pub success: bool,
+    #[serde(default)]
+    pub replace_last: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -129,11 +131,17 @@ pub struct LocalAppCandidate {
     pub icon_data_url: Option<String>,
 }
 
+fn default_install_concurrency() -> u8 {
+    5
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StarBoxProfile {
     pub version: u32,
     pub updated_at: String,
     pub mirror_preset: String,
+    #[serde(default = "default_install_concurrency")]
+    pub install_concurrency: u8,
     pub groups: Vec<String>,
     pub apps: Vec<AppItem>,
     pub dock_system_apps: Vec<String>,

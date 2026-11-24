@@ -616,7 +616,7 @@
       <section class="hero">
         <div class="glow"></div>
         <div class="container">
-          <div class="badge" id="hero-badge">✦ 最新正式版 v0.0.1 · Tauri v2 + React 19 + shadcn/ui + Rust</div>
+          <div class="badge" id="hero-badge">✦ 最新正式版 v0.0.2 · Tauri v2 + React 19 + shadcn/ui + Rust</div>
           <h1>
             不用敲一行命令，<br />
             <span class="gradient-text">优雅掌控你的 Mac 软件、Dock 与系统设置</span>
@@ -690,7 +690,7 @@
                       9 大统一分类 · 局域网加速中 (192.168.1.105:1082 · 42 ms)
                     </div>
                   </div>
-                  <span class="pill blue">Brew 就绪 · arm64 · v0.0.1</span>
+                  <span class="pill blue">Brew 就绪 · arm64 · v0.0.2</span>
                 </div>
                 <div class="mock-grid">
                   <div class="mock-card">
@@ -795,7 +795,7 @@
                   原生适配搭载 Apple M 系列芯片的 MacBook Air、MacBook Pro、Mac mini、iMac 与 Mac Studio。
                 </p>
                 <div class="dl-meta">
-                  <span id="card-ver-arm64">版本：v0.0.1</span>
+                  <span id="card-ver-arm64">版本：v0.0.2</span>
                   <span>·</span>
                   <span>系统要求：macOS 12.0+</span>
                   <span>·</span>
@@ -824,7 +824,7 @@
                   适配 2020 年及更早搭载 Intel 处理器的 Mac 设备。
                 </p>
                 <div class="dl-meta">
-                  <span id="card-ver-x64">版本：v0.0.1</span>
+                  <span id="card-ver-x64">版本：v0.0.2</span>
                   <span>·</span>
                   <span>系统要求：macOS 12.0+</span>
                   <span>·</span>
@@ -866,8 +866,41 @@
             <div class="release-card">
               <div class="release-head">
                 <div class="release-tag">
+                  <span>v0.0.2</span>
+                  <span class="pill blue">最新正式版 · 安装器安全加固 & 原生并发体验</span>
+                </div>
+                <span class="release-date">2026-11-25 · <a href="https://github.com/starandget/star-box/releases/tag/v0.0.2" target="_blank" rel="noreferrer" style="text-decoration: underline">查看 GitHub Release ↗</a></span>
+              </div>
+              <div class="release-cols">
+                <div class="release-group">
+                  <h4>🛡️ DMG / ZIP 安装器安全修复</h4>
+                  <ul>
+                    <li>修复挂载 DMG 时跟随 <code>Applications → /Applications</code> 符号链接误删本机已有应用的严重问题，扫描改为广度优先且严格禁止跟随软链接与越界路径。</li>
+                    <li>复制 <code>.app</code> 升级为原子暂存替换流程（先 <code>ditto</code> 到临时目录再备份/切换，失败自动回滚），绝不先删旧版；新增 7 项 Rust 单元与真机 <code>hdiutil</code> 集成测试。</li>
+                  </ul>
+                </div>
+                <div class="release-group">
+                  <h4>⚡ 原生命令行进度条 & 5 路并发</h4>
+                  <ul>
+                    <li>所有应用统一按「Homebrew → GitHub Releases → 官网链接」回退顺序安装与更新，失败及纯官网软件均提供一键直达官网链接。</li>
+                    <li>启用 macOS 原生 PTY（<code>script</code>）实时输出 <code>brew</code> / <code>curl</code> / <code>hdiutil</code> / <code>ditto</code> 原始命令与原地刷新进度条，默认支持 5 路并发（设置页可调 1~5 路）并配备管理员互斥锁与锁冲突自动重试。</li>
+                  </ul>
+                </div>
+                <div class="release-group">
+                  <h4>🌐 透明代理展示 & Dock 对齐优化</h4>
+                  <ul>
+                    <li>任务队列与命令行日志直接展示当前生效代理（本机代理 / 局域网手机代理 / 直连），直连模式显式清除残留代理环境变量。</li>
+                    <li>Dock 整理默认分组与组内排序 1:1 对齐「新机起航」，非起航新装软件自动归入「未分组 · 待调整」，并支持将 <code>Star Box</code> 自身拖入 Dock 固定展示。</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div class="release-card">
+              <div class="release-head">
+                <div class="release-tag">
                   <span>v0.0.1</span>
-                  <span class="pill blue">最新正式版 · 首发全功能基线</span>
+                  <span class="pill">首发全功能基线</span>
                 </div>
                 <span class="release-date">2026-11-24 · <a href="https://github.com/starandget/star-box/releases/tag/v0.0.1" target="_blank" rel="noreferrer" style="text-decoration: underline">查看 GitHub Release ↗</a></span>
               </div>
@@ -972,7 +1005,7 @@
           const res = await fetch("https://api.github.com/repos/starandget/star-box/releases/latest");
           if (!res.ok) return;
           const data = await res.json();
-          const tag = data.tag_name || "v0.0.1";
+          const tag = data.tag_name || "v0.0.2";
           const badge = document.getElementById("hero-badge");
           if (badge) {
             badge.textContent = `✦ 最新正式版 ${tag} · Tauri v2 + React 19 + shadcn/ui + Rust`;

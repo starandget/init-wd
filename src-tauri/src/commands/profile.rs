@@ -14,6 +14,7 @@ pub fn default_profile() -> StarBoxProfile {
         version: 1,
         updated_at: Utc::now().to_rfc3339(),
         mirror_preset: "tsinghua".to_string(),
+        install_concurrency: 5,
         groups: vec![
             "网络与日常".to_string(),
             "AI 助手".to_string(),
@@ -290,8 +291,9 @@ pub async fn load_profile() -> Result<StarBoxProfile, String> {
     if path.exists() {
         let content =
             std::fs::read_to_string(&path).map_err(|e| format!("读取配置失败: {e}"))?;
-        let profile: StarBoxProfile =
+        let mut profile: StarBoxProfile =
             serde_json::from_str(&content).map_err(|e| format!("解析配置失败: {e}"))?;
+        profile.install_concurrency = profile.install_concurrency.clamp(1, 5);
         Ok(profile)
     } else {
         let def = default_profile();
@@ -302,6 +304,7 @@ pub async fn load_profile() -> Result<StarBoxProfile, String> {
 
 #[tauri::command]
 pub async fn save_profile(mut profile: StarBoxProfile) -> Result<StarBoxProfile, String> {
+    profile.install_concurrency = profile.install_concurrency.clamp(1, 5);
     profile.updated_at = Utc::now().to_rfc3339();
     let path = profile_path();
     if let Some(parent) = path.parent() {

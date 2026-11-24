@@ -18,11 +18,67 @@ export const UNIFIED_APP_GROUPS = [
 
 export const OTHER_GROUP = "其他应用";
 
+export interface StarterPackSlot {
+  group: string;
+  groupIndex: number;
+  appIndex: number;
+  isMenubar: boolean;
+}
+
 const catalog = bundledFeatured as FeaturedCatalog;
 
 const byCask = new Map<string, string>();
 const byAppFile = new Map<string, string>();
 const byName = new Map<string, string>();
+
+const starterByCask = new Map<string, StarterPackSlot>();
+const starterByAppFile = new Map<string, StarterPackSlot>();
+const starterByName = new Map<string, StarterPackSlot>();
+
+const featuredById = new Map(catalog.apps.map((a) => [a.id, a]));
+
+export const STARTER_PACK_GROUP_ORDER: string[] = [];
+
+(catalog.starter_pack || []).forEach((spGroup, groupIndex) => {
+  const isMenubar = spGroup.group === MENUBAR_GROUP;
+  if (!isMenubar && !STARTER_PACK_GROUP_ORDER.includes(spGroup.group)) {
+    STARTER_PACK_GROUP_ORDER.push(spGroup.group);
+  }
+  spGroup.apps.forEach((appId, appIndex) => {
+    const app = featuredById.get(appId);
+    if (!app) return;
+    const slot: StarterPackSlot = {
+      group: spGroup.group,
+      groupIndex,
+      appIndex,
+      isMenubar,
+    };
+    starterByName.set(app.name.toLowerCase(), slot);
+    for (const c of app.brew_casks || []) {
+      starterByCask.set(c.toLowerCase(), slot);
+    }
+    for (const d of app.dock_apps || []) {
+      starterByAppFile.set(d.toLowerCase(), slot);
+      starterByName.set(d.replace(/\.app$/i, "").toLowerCase(), slot);
+    }
+  });
+});
+
+export function matchStarterPackSlot(
+  app: LocalAppCandidate
+): StarterPackSlot | null {
+  if (app.brew_cask) {
+    const hit = starterByCask.get(app.brew_cask.toLowerCase());
+    if (hit) return hit;
+  }
+  const byFile = starterByAppFile.get(app.app_name.toLowerCase());
+  if (byFile) return byFile;
+
+  const byDisplay = starterByName.get(app.name.toLowerCase());
+  if (byDisplay) return byDisplay;
+
+  return null;
+}
 
 for (const app of catalog.apps) {
   const isMenubarOnly =

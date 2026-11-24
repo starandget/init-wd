@@ -85,7 +85,41 @@ pub fn active_proxy_url() -> Option<String> {
     guard.url.as_deref().and_then(normalize_proxy_url)
 }
 
+/// Classifies the currently configured Star Box proxy for display in install logs.
+pub fn describe_active_proxy() -> String {
+    let Some(url) = active_proxy_url() else {
+        return "直连（未启用 Star Box 代理）".to_string();
+    };
+    let host_port = url
+        .split("://")
+        .nth(1)
+        .unwrap_or(url.as_str())
+        .split('/')
+        .next()
+        .unwrap_or("");
+    let host = host_port
+        .rsplit_once(':')
+        .map(|(h, _)| h)
+        .unwrap_or(host_port)
+        .trim_matches(['[', ']'])
+        .to_lowercase();
+
+    let kind = if host == "127.0.0.1" || host == "localhost" || host == "::1" {
+        "本机代理"
+    } else if host
+        .parse::<Ipv4Addr>()
+        .map(|ip| ip.is_private())
+        .unwrap_or(false)
+    {
+        "局域网/手机代理"
+    } else {
+        "自定义代理"
+    };
+    format!("{kind} {url}")
+}
+
 /// Injects proxy environment variables into any child process (brew, curl, git, bash).
+/// Explicitly clears proxy env vars in direct mode so stale shell env cannot hijack traffic.
 pub fn apply_proxy_env(cmd: &mut Command) {
     if let Some(url) = active_proxy_url() {
         cmd.env("http_proxy", &url)
@@ -94,6 +128,13 @@ pub fn apply_proxy_env(cmd: &mut Command) {
             .env("HTTP_PROXY", &url)
             .env("HTTPS_PROXY", &url)
             .env("ALL_PROXY", &url);
+    } else {
+        cmd.env_remove("http_proxy")
+            .env_remove("https_proxy")
+            .env_remove("all_proxy")
+            .env_remove("HTTP_PROXY")
+            .env_remove("HTTPS_PROXY")
+            .env_remove("ALL_PROXY");
     }
 }
 

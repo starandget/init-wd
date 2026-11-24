@@ -10,6 +10,7 @@ import {
   ExternalLink,
   FileDown,
   FileUp,
+  Layers,
   Moon,
   Power,
   RefreshCw,
@@ -42,6 +43,8 @@ interface SettingsPageProps {
   updateInfo: UpdateCheckResult | null;
   theme?: ThemeMode;
   onChangeTheme?: (theme: ThemeMode) => void;
+  installConcurrency?: number;
+  onChangeInstallConcurrency?: (value: number) => void;
   envLogs?: string[];
   installingBrew?: boolean;
   onRefreshEnv?: () => void;
@@ -126,6 +129,8 @@ export function SettingsPage({
   updateInfo,
   theme = "light",
   onChangeTheme,
+  installConcurrency = 5,
+  onChangeInstallConcurrency,
   onCheckUpdate,
   onProfileUpdated,
 }: SettingsPageProps) {
@@ -315,11 +320,43 @@ export function SettingsPage({
                 </div>
 
                 <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/40 p-3.5">
+                  <div className="flex items-start gap-2.5">
+                    <Layers className="mt-0.5 h-4 w-4 text-muted-foreground" />
+                    <div>
+                      <div className="flex items-center gap-2 text-sm font-medium">
+                        <span>安装并发任务数</span>
+                        <Badge variant="outline">默认 5 路 · 最高 5 路</Badge>
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        控制任务队列同时下载与安装的软件数量；需要管理员授权或 PKG 安装时自动排队避免冲突
+                      </div>
+                    </div>
+                  </div>
+                  <div className="inline-flex shrink-0 items-center rounded-lg border border-border bg-background p-0.5">
+                    {[1, 2, 3, 4, 5].map((n) => (
+                      <button
+                        key={n}
+                        type="button"
+                        onClick={() => onChangeInstallConcurrency?.(n)}
+                        className={cn(
+                          "min-w-7 rounded-md px-2 py-1 text-xs font-medium transition-colors cursor-pointer",
+                          installConcurrency === n
+                            ? "bg-primary text-primary-foreground shadow-2xs"
+                            : "text-muted-foreground hover:text-foreground"
+                        )}
+                      >
+                        {n}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/40 p-3.5">
                   <div>
                     <div className="flex items-center gap-2 text-sm font-medium">
                       <span>Star Box 当前版本</span>
                       <Badge variant="secondary" className="font-mono">
-                        v{updateInfo?.current_version || "0.0.1"}
+                        v{updateInfo?.current_version || "0.0.2"}
                       </Badge>
                       {updateInfo?.has_update && (
                         <Badge variant="info">

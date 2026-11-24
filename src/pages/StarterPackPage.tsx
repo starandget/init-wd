@@ -459,6 +459,18 @@ export function StarterPackPage({
                                 已装
                               </span>
                             )
+                          ) : !f.brew_formula &&
+                            !(f.brew_casks && f.brew_casks.length > 0) &&
+                            !f.github_repo &&
+                            f.website ? (
+                            <button
+                              type="button"
+                              onClick={() => api.openExternal(f.website!)}
+                              className="inline-flex items-center gap-1 rounded-full bg-amber-500/12 px-2.5 py-1 text-xs font-medium text-amber-700 hover:bg-amber-500/20 dark:text-amber-400 transition-colors cursor-pointer"
+                            >
+                              <ExternalLink className="h-3 w-3" />
+                              官网
+                            </button>
                           ) : (
                             <button
                               type="button"

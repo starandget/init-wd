@@ -61,6 +61,8 @@ export default function App() {
 
   const [tasks, setTasks] = useState<InstallTask[]>([]);
   const [proxyConfig, setProxyConfig] = useState<ProxyConfig | null>(null);
+  const proxyConfigRef = useRef<ProxyConfig | null>(null);
+  proxyConfigRef.current = proxyConfig;
   const [envLogs, setEnvLogs] = useState<string[]>([]);
   const [installingBrew, setInstallingBrew] = useState(false);
   const [discoverMode, setDiscoverMode] = useState<DiscoverMode>("cn");
@@ -73,7 +75,8 @@ export default function App() {
   tasksRef.current = tasks;
   const cancelledTaskIdsRef = useRef<Set<string>>(new Set());
   const pendingQueueRef = useRef<Array<{ task: InstallTask; mirror: string }>>([]);
-  const queueWorkerActiveRef = useRef(false);
+  const activeWorkersRef = useRef(0);
+  const activeAppKeysRef = useRef<Set<string>>(new Set());
   const toastTimerRef = useRef<number | null>(null);
 
   const showToast = useCallback((notice: Omit<ToastNotice, "id">) => {
@@ -177,6 +180,10 @@ export default function App() {
                 ? "success"
                 : "error"
               : "running";
+            const nextLogs =
+              p.replace_last && t.logs.length > 0
+                ? [...t.logs.slice(0, -1), p.message]
+                : [...t.logs.slice(-800), p.message];
             return {
               ...t,
               status: nextStatus,
@@ -186,8 +193,10 @@ export default function App() {
                   ? p.progress
                   : p.done && p.success
                   ? 100
+                  : p.replace_last
+                  ? t.progress
                   : Math.min(92, t.progress + 3),
-              logs: [...t.logs.slice(-180), p.message],
+              logs: nextLogs,
               error: p.done && !p.success ? p.message : t.error,
             };
           })
@@ -220,29 +229,43 @@ export default function App() {
     }
   }, []);
 
-  const drainTaskQueue = useCallback(async () => {
-    if (queueWorkerActiveRef.current) return;
-    queueWorkerActiveRef.current = true;
-    let successCount = 0;
-    let lastCompleted: InstallTask | null = null;
+  const getInstallConcurrency = useCallback(() => {
+    const raw = profileRef.current?.install_concurrency ?? 5;
+    return Math.min(5, Math.max(1, Math.round(raw)));
+  }, []);
 
-    try {
-      while (pendingQueueRef.current.length > 0) {
-        const next = pendingQueueRef.current.shift();
-        if (!next) break;
-        const { task: t, mirror } = next;
+  const drainTaskQueue = useCallback(() => {
+    const maxConcurrency = getInstallConcurrency();
+    while (
+      activeWorkersRef.current < maxConcurrency &&
+      pendingQueueRef.current.length > 0
+    ) {
+      const next = pendingQueueRef.current.shift();
+      if (!next) break;
+      const { task: t, mirror } = next;
+      const appKey = `${t.action}:${t.app.id}`;
 
-        if (cancelledTaskIdsRef.current.has(t.task_id)) {
-          cancelledTaskIdsRef.current.delete(t.task_id);
-          continue;
-        }
+      if (cancelledTaskIdsRef.current.has(t.task_id)) {
+        cancelledTaskIdsRef.current.delete(t.task_id);
+        activeAppKeysRef.current.delete(appKey);
+        continue;
+      }
 
-        setTasks((prev) =>
-          prev.map((x) =>
-            x.task_id === t.task_id ? { ...x, status: "running", progress: 8 } : x
-          )
-        );
+      activeWorkersRef.current += 1;
+      const activeProxyUrl =
+        proxyConfigRef.current?.enabled && proxyConfigRef.current.url
+          ? proxyConfigRef.current.url
+          : null;
+      setTasks((prev) =>
+        prev.map((x) =>
+          x.task_id === t.task_id
+            ? { ...x, status: "running", progress: 8, proxy_url: activeProxyUrl }
+            : x
+        )
+      );
 
+      void (async () => {
+        let succeeded = false;
         try {
           if (t.action === "install") {
             await api.installApp(t.task_id, t.app, mirror);
@@ -251,8 +274,7 @@ export default function App() {
           } else {
             await api.uninstallApp(t.task_id, t.app);
           }
-          successCount += 1;
-          lastCompleted = t;
+          succeeded = true;
           setTasks((prev) =>
             prev.map((x) =>
               x.task_id === t.task_id
@@ -263,55 +285,87 @@ export default function App() {
         } catch (e) {
           const isCancelled = cancelledTaskIdsRef.current.has(t.task_id);
           cancelledTaskIdsRef.current.delete(t.task_id);
+          const errText = isCancelled ? "已手动终止" : String(e);
           setTasks((prev) =>
-            prev.map((x) =>
-              x.task_id === t.task_id
-                ? {
-                    ...x,
-                    status: "error",
-                    stage: isCancelled ? "cancelled" : x.stage,
-                    error: isCancelled ? "已手动终止" : String(e),
-                    logs: [
-                      ...x.logs,
-                      isCancelled ? "已手动终止" : String(e),
-                    ],
-                  }
-                : x
-            )
+            prev.map((x) => {
+              if (x.task_id !== t.task_id) return x;
+              const lastLog = x.logs[x.logs.length - 1];
+              return {
+                ...x,
+                status: "error",
+                stage: isCancelled ? "cancelled" : x.stage,
+                error: errText,
+                logs: lastLog === errText ? x.logs : [...x.logs.slice(-800), errText],
+              };
+            })
           );
+          if (!isCancelled) {
+            const fallbackUrl =
+              t.app.website?.trim() ||
+              (t.app.github_repo?.trim()
+                ? `https://github.com/${t.app.github_repo.trim().replace(/^\/+|\/+$/g, "")}/releases`
+                : null);
+            showToast({
+              title: `${t.app.name} 自动安装失败`,
+              description: fallbackUrl
+                ? `可前往官网手动下载：${fallbackUrl}`
+                : "请展开任务队列查看完整命令行日志",
+              actionLabel: fallbackUrl ? "打开官网" : "查看日志",
+              onAction: () => {
+                if (fallbackUrl) {
+                  void api.openExternal(fallbackUrl);
+                } else {
+                  setActiveTab("queue");
+                }
+              },
+            });
+          }
+        } finally {
+          activeWorkersRef.current = Math.max(0, activeWorkersRef.current - 1);
+          activeAppKeysRef.current.delete(appKey);
+          if (succeeded) {
+            const actionText =
+              t.action === "upgrade"
+                ? "更新"
+                : t.action === "uninstall"
+                ? "卸载"
+                : "安装";
+            showToast({
+              title: `${t.app.name} ${actionText}完成`,
+            });
+          }
+          void refreshScan();
+          drainTaskQueue();
         }
-      }
-    } finally {
-      queueWorkerActiveRef.current = false;
+      })();
     }
-
-    await refreshScan();
-    if (successCount > 0 && lastCompleted) {
-      const actionText =
-        lastCompleted.action === "upgrade"
-          ? "更新"
-          : lastCompleted.action === "uninstall"
-          ? "卸载"
-          : "安装";
-      showToast({
-        title:
-          successCount === 1
-            ? `${lastCompleted.app.name} ${actionText}完成`
-            : `${successCount} 个软件任务已完成`,
-      });
-    }
-  }, [refreshScan, showToast]);
+  }, [getInstallConcurrency, refreshScan, showToast]);
 
   const enqueueAndRun = useCallback(
     async (items: AppItem[], action: "install" | "upgrade" | "uninstall") => {
       if (items.length === 0) return;
       const mirror =
         profileRef.current?.mirror_preset || env?.mirror_preset || "tsinghua";
+      const concurrency = getInstallConcurrency();
 
       const actionText =
         action === "upgrade" ? "更新" : action === "uninstall" ? "卸载" : "安装";
 
-      const newTasks: InstallTask[] = items.map((app) => ({
+      // Deduplicate against currently queued/running tasks for the same app
+      const freshItems: AppItem[] = [];
+      for (const app of items) {
+        const key = `${action}:${app.id}`;
+        if (!activeAppKeysRef.current.has(key)) {
+          activeAppKeysRef.current.add(key);
+          freshItems.push(app);
+        }
+      }
+      if (freshItems.length === 0) {
+        showToast({ title: "所选软件已在任务队列中" });
+        return;
+      }
+
+      const newTasks: InstallTask[] = freshItems.map((app) => ({
         task_id: `${action}-${app.id}-${Date.now()}-${Math.random()
           .toString(36)
           .slice(2, 6)}`,
@@ -331,17 +385,20 @@ export default function App() {
       // Non-intrusive toast instead of yanking user away from current page
       showToast({
         title:
-          items.length === 1
-            ? `开始后台${actionText} ${items[0].name}`
-            : `已将 ${items.length} 个软件加入后台${actionText}队列`,
-        description: "任务将按顺序依次执行，完成后自动更新状态",
+          freshItems.length === 1
+            ? `开始后台${actionText} ${freshItems[0].name}`
+            : `已将 ${freshItems.length} 个软件加入后台${actionText}队列`,
+        description:
+          concurrency > 1
+            ? `最多同时并发 ${concurrency} 个任务，完成后自动更新状态`
+            : "任务将按顺序依次执行，完成后自动更新状态",
         actionLabel: "查看队列",
         onAction: () => setActiveTab("queue"),
       });
 
-      void drainTaskQueue();
+      drainTaskQueue();
     },
-    [drainTaskQueue, env?.mirror_preset, showToast]
+    [drainTaskQueue, env?.mirror_preset, getInstallConcurrency, showToast]
   );
 
   const handleAddAppsBatch = useCallback(
@@ -387,6 +444,13 @@ export default function App() {
   const handleCancelTask = useCallback(
     async (taskId: string) => {
       cancelledTaskIdsRef.current.add(taskId);
+      const target = tasksRef.current.find((t) => t.task_id === taskId);
+      if (target) {
+        activeAppKeysRef.current.delete(`${target.action}:${target.app.id}`);
+      }
+      pendingQueueRef.current = pendingQueueRef.current.filter(
+        (entry) => entry.task.task_id !== taskId
+      );
       setTasks((prev) =>
         prev.map((x) =>
           x.task_id === taskId && (x.status === "queued" || x.status === "running")
@@ -419,6 +483,7 @@ export default function App() {
       cancelledTaskIdsRef.current.add(t.task_id);
     }
     pendingQueueRef.current = [];
+    activeAppKeysRef.current.clear();
     setTasks((prev) =>
       prev.map((x) =>
         x.status === "queued" || x.status === "running"
@@ -435,6 +500,22 @@ export default function App() {
     await Promise.allSettled(active.map((t) => api.cancelInstallTask(t.task_id)));
     showToast({ title: `已终止全部 ${active.length} 个进行中任务` });
   }, [showToast]);
+
+  const handleChangeInstallConcurrency = useCallback(
+    async (value: number) => {
+      const clamped = Math.min(5, Math.max(1, Math.round(value)));
+      const current = profileRef.current;
+      if (!current) return;
+      const next: StarBoxProfile = {
+        ...current,
+        install_concurrency: clamped,
+      };
+      profileRef.current = next;
+      await persistProfile(next);
+      drainTaskQueue();
+    },
+    [drainTaskQueue, persistProfile]
+  );
 
   const handleInstallHomebrew = async (mirror: string) => {
     setInstallingBrew(true);
@@ -472,8 +553,12 @@ export default function App() {
     [tasks]
   );
 
-  const installedCount = localApps.length;
-  const installableCount = localApps.length;
+  const manageableLocalApps = useMemo(
+    () => localApps.filter((a) => a.app_name !== "Star Box.app"),
+    [localApps]
+  );
+  const installedCount = manageableLocalApps.length;
+  const installableCount = manageableLocalApps.length;
 
   return (
     <div className="relative flex h-screen w-screen flex-col overflow-hidden bg-background text-foreground">
@@ -542,7 +627,7 @@ export default function App() {
 
         {activeTab === "apps" && (
           <MyAppsPage
-            localApps={localApps}
+            localApps={manageableLocalApps}
             localScanning={localScanning}
             groups={profile?.groups || []}
             apps={profile?.apps || []}
@@ -560,6 +645,8 @@ export default function App() {
           <QueuePage
             tasks={tasks}
             env={env}
+            proxyConfig={proxyConfig}
+            installConcurrency={Math.min(5, Math.max(1, profile?.install_concurrency ?? 5))}
             onRetry={(item) => enqueueAndRun([item], "install")}
             onCancelTask={handleCancelTask}
             onCancelAll={handleCancelAllTasks}
@@ -569,6 +656,7 @@ export default function App() {
               )
             }
             onGoSettings={() => setActiveTab("settings")}
+            onGoProxy={() => setActiveTab("proxy")}
           />
         )}
 
@@ -591,6 +679,8 @@ export default function App() {
             updateInfo={updateInfo}
             theme={theme}
             onChangeTheme={setTheme}
+            installConcurrency={Math.min(5, Math.max(1, profile?.install_concurrency ?? 5))}
+            onChangeInstallConcurrency={handleChangeInstallConcurrency}
             envLogs={envLogs}
             installingBrew={installingBrew}
             onRefreshEnv={refreshEnv}

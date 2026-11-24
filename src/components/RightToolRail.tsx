@@ -5,10 +5,12 @@ import {
   CheckCircle2,
   Clock,
   Copy,
+  ExternalLink,
   Minus,
   Square,
   XCircle,
 } from "lucide-react";
+import { api } from "@/api";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Spinner } from "@/components/ui/spinner";
@@ -118,7 +120,13 @@ export function RightToolRail({
                     当前没有运行中的任务
                   </div>
                 ) : (
-                  tasks.slice(0, 12).map((t) => (
+                  tasks.slice(0, 12).map((t) => {
+                    const fallbackUrl =
+                      t.app.website?.trim() ||
+                      (t.app.github_repo?.trim()
+                        ? `https://github.com/${t.app.github_repo.trim().replace(/^\/+|\/+$/g, "")}/releases`
+                        : null);
+                    return (
                     <div
                       key={t.task_id}
                       className="space-y-1.5 rounded-lg border border-border/80 bg-muted/30 p-2.5"
@@ -147,8 +155,19 @@ export function RightToolRail({
                             终止
                           </button>
                         )}
+                        {t.status === "error" && fallbackUrl && t.stage !== "cancelled" && (
+                          <button
+                            type="button"
+                            onClick={() => api.openExternal(fallbackUrl)}
+                            title={fallbackUrl}
+                            className="flex shrink-0 items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-medium text-primary hover:bg-primary/12 cursor-pointer"
+                          >
+                            <ExternalLink className="h-2.5 w-2.5" />
+                            官网
+                          </button>
+                        )}
                       </div>
-                      <div className="truncate text-[10.5px] text-muted-foreground">
+                      <div className="truncate font-mono text-[10.5px] text-muted-foreground">
                         {t.logs[t.logs.length - 1] || "等待中..."}
                       </div>
                       <Progress
@@ -163,7 +182,8 @@ export function RightToolRail({
                         }
                       />
                     </div>
-                  ))
+                  );
+                  })
                 )}
               </div>
               <div className="border-t border-border p-2">

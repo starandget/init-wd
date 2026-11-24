@@ -90,6 +90,7 @@ export interface InstallProgressEvent {
   progress: number | null;
   done: boolean;
   success: boolean;
+  replace_last?: boolean;
 }
 
 export interface EnvLogEvent {
@@ -147,6 +148,7 @@ export interface StarBoxProfile {
   version: number;
   updated_at: string;
   mirror_preset: string;
+  install_concurrency?: number;
   groups: string[];
   apps: AppItem[];
   dock_system_apps: string[];
@@ -163,6 +165,7 @@ export interface InstallTask {
   stage: string;
   logs: string[];
   error?: string;
+  proxy_url?: string | null;
 }
 
 export type ThemeMode = "light" | "warm" | "dark";

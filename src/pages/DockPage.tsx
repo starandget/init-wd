@@ -29,9 +29,9 @@ import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import {
   classifyLocalApp,
+  matchStarterPackSlot,
   MENUBAR_GROUP,
-  OTHER_GROUP,
-  UNIFIED_APP_GROUPS,
+  STARTER_PACK_GROUP_ORDER,
 } from "@/lib/appGroups";
 import { cn } from "@/lib/utils";
 import type {
@@ -60,10 +60,11 @@ interface DockGroup {
 
 interface SavedDockState {
   groups: DockGroup[];
+  ungroupedAppIds?: string[];
   hiddenAppIds: string[];
 }
 
-const STORAGE_KEY = "starbox-dock-layout-v2";
+const STORAGE_KEY = "starbox-dock-layout-v3";
 
 // Fixed Group 1 (always locked at the front of the Dock)
 const FIXED_FIRST_GROUP_LABELS = [
@@ -91,40 +92,74 @@ const FIXED_SYSTEM_DOCK_PATHS = [
 
 function buildDefaultGroups(localApps: LocalAppCandidate[]): {
   groups: DockGroup[];
+  ungroupedAppIds: string[];
   hiddenAppIds: string[];
 } {
-  const order = [...UNIFIED_APP_GROUPS, OTHER_GROUP] as string[];
-  const map = new Map<string, string[]>();
-  for (const g of order) map.set(g, []);
+  const buckets = new Map<string, Array<{ id: string; appIndex: number }>>();
+  for (const name of STARTER_PACK_GROUP_ORDER) buckets.set(name, []);
+
+  const ungroupedAppIds: string[] = [];
   const hiddenAppIds: string[] = [];
+
   for (const app of localApps) {
-    const g = classifyLocalApp(app);
-    if (g === MENUBAR_GROUP) {
-      hiddenAppIds.push(app.id);
+    const slot = matchStarterPackSlot(app);
+    if (slot) {
+      if (slot.isMenubar) {
+        hiddenAppIds.push(app.id);
+      } else {
+        if (!buckets.has(slot.group)) buckets.set(slot.group, []);
+        buckets.get(slot.group)!.push({ id: app.id, appIndex: slot.appIndex });
+      }
       continue;
     }
-    if (!map.has(g)) map.set(g, []);
-    map.get(g)!.push(app.id);
+
+    if (classifyLocalApp(app) === MENUBAR_GROUP) {
+      hiddenAppIds.push(app.id);
+    } else {
+      ungroupedAppIds.push(app.id);
+    }
   }
-  const groups = order
-    .filter((name) => name !== MENUBAR_GROUP)
-    .map((name) => ({
+
+  const groups: DockGroup[] = STARTER_PACK_GROUP_ORDER.map((name) => {
+    const entries = buckets.get(name) || [];
+    entries.sort((a, b) => a.appIndex - b.appIndex);
+    return {
       id: `grp-${name}`,
       name,
-      appIds: map.get(name) || [],
-    }))
-    .filter((g) => g.appIds.length > 0);
-  return { groups, hiddenAppIds };
+      appIds: entries.map((e) => e.id),
+    };
+  }).filter((g) => g.appIds.length > 0);
+
+  return { groups, ungroupedAppIds, hiddenAppIds };
 }
 
 function pruneEmptyGroups(groups: DockGroup[]): DockGroup[] {
   return groups.filter((g) => g.appIds.length > 0 || g.keepEmpty);
 }
 
+function insertByStarterOrder(
+  appIds: string[],
+  newId: string,
+  newOrder: number,
+  appById: Map<string, LocalAppCandidate>
+): string[] {
+  const idx = appIds.findIndex((existingId) => {
+    const existingApp = appById.get(existingId);
+    if (!existingApp) return false;
+    const slot = matchStarterPackSlot(existingApp);
+    return slot !== null && slot.appIndex > newOrder;
+  });
+  if (idx === -1) return [...appIds, newId];
+  const copy = [...appIds];
+  copy.splice(idx, 0, newId);
+  return copy;
+}
+
 function mergeSaved(
   localApps: LocalAppCandidate[],
   saved: SavedDockState | null
-): { groups: DockGroup[]; hiddenAppIds: string[] } {
+): { groups: DockGroup[]; ungroupedAppIds: string[]; hiddenAppIds: string[] } {
+  const appById = new Map(localApps.map((a) => [a.id, a]));
   const validIds = new Set(localApps.map((a) => a.id));
   if (!saved || !Array.isArray(saved.groups)) {
     return buildDefaultGroups(localApps);
@@ -132,6 +167,12 @@ function mergeSaved(
 
   const placed = new Set<string>();
   const hiddenAppIds = (saved.hiddenAppIds || []).filter((id) => {
+    if (!validIds.has(id) || placed.has(id)) return false;
+    placed.add(id);
+    return true;
+  });
+
+  const ungroupedAppIds = (saved.ungroupedAppIds || []).filter((id) => {
     if (!validIds.has(id) || placed.has(id)) return false;
     placed.add(id);
     return true;
@@ -154,30 +195,58 @@ function mergeSaved(
     }
   }
 
-  // Place newly discovered local apps into their default category
+  // Place newly discovered local apps:
+  // 1) Starter-pack apps align to their starter_pack group & order
+  // 2) Menubar utilities go to hidden tray
+  // 3) All other new apps land in "未分组" waiting for user organization
   const byName = new Map(groups.map((g) => [g.name, g]));
   for (const app of localApps) {
     if (placed.has(app.id)) continue;
-    const cat = classifyLocalApp(app);
-    if (cat === MENUBAR_GROUP) {
-      hiddenAppIds.push(app.id);
+    const slot = matchStarterPackSlot(app);
+    if (slot) {
+      if (slot.isMenubar) {
+        hiddenAppIds.push(app.id);
+        continue;
+      }
+      let target = byName.get(slot.group);
+      if (!target) {
+        target = { id: `grp-${slot.group}`, name: slot.group, appIds: [] };
+        // Insert new starter group in starter_pack relative order
+        const insertAt = groups.findIndex((g) => {
+          const idx = STARTER_PACK_GROUP_ORDER.indexOf(g.name);
+          return idx !== -1 && idx > slot.groupIndex;
+        });
+        if (insertAt === -1) groups.push(target);
+        else groups.splice(insertAt, 0, target);
+        byName.set(slot.group, target);
+      }
+      target.appIds = insertByStarterOrder(
+        target.appIds,
+        app.id,
+        slot.appIndex,
+        appById
+      );
+      target.keepEmpty = false;
       continue;
     }
-    let target = byName.get(cat);
-    if (!target) {
-      target = { id: `grp-${cat}`, name: cat, appIds: [] };
-      groups.push(target);
-      byName.set(cat, target);
+
+    if (classifyLocalApp(app) === MENUBAR_GROUP) {
+      hiddenAppIds.push(app.id);
+    } else {
+      ungroupedAppIds.push(app.id);
     }
-    target.appIds.push(app.id);
-    target.keepEmpty = false;
   }
 
-  return { groups: pruneEmptyGroups(groups), hiddenAppIds };
+  return {
+    groups: pruneEmptyGroups(groups),
+    ungroupedAppIds,
+    hiddenAppIds,
+  };
 }
 
 export function DockPage({ localApps }: DockPageProps) {
   const [groups, setGroups] = useState<DockGroup[]>([]);
+  const [ungroupedAppIds, setUngroupedAppIds] = useState<string[]>([]);
   const [hiddenAppIds, setHiddenAppIds] = useState<string[]>([]);
   const [hydrated, setHydrated] = useState(false);
 
@@ -186,11 +255,12 @@ export function DockPage({ localApps }: DockPageProps) {
   // Drag states
   const [dragGroupId, setDragGroupId] = useState<string | null>(null);
   const [dragApp, setDragApp] = useState<{
-    sourceGroupId: string | "hidden";
+    sourceGroupId: string | "ungrouped" | "hidden";
     appId: string;
   } | null>(null);
   const [dragOverGroupId, setDragOverGroupId] = useState<string | null>(null);
   const [dragOverAppKey, setDragOverAppKey] = useState<string | null>(null);
+  const [dragOverUngrouped, setDragOverUngrouped] = useState(false);
   const [dragOverHidden, setDragOverHidden] = useState(false);
 
   const clearDragState = () => {
@@ -198,6 +268,7 @@ export function DockPage({ localApps }: DockPageProps) {
     setDragApp(null);
     setDragOverGroupId(null);
     setDragOverAppKey(null);
+    setDragOverUngrouped(false);
     setDragOverHidden(false);
   };
 
@@ -225,6 +296,7 @@ export function DockPage({ localApps }: DockPageProps) {
     }
     const merged = mergeSaved(localApps, saved);
     setGroups(merged.groups);
+    setUngroupedAppIds(merged.ungroupedAppIds);
     setHiddenAppIds(merged.hiddenAppIds);
     setHydrated(true);
   }, [localApps]);
@@ -233,12 +305,12 @@ export function DockPage({ localApps }: DockPageProps) {
   useEffect(() => {
     if (!hydrated) return;
     try {
-      const payload: SavedDockState = { groups, hiddenAppIds };
+      const payload: SavedDockState = { groups, ungroupedAppIds, hiddenAppIds };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
     } catch {
       // ignore
     }
-  }, [hydrated, groups, hiddenAppIds]);
+  }, [hydrated, groups, ungroupedAppIds, hiddenAppIds]);
 
   const loadBackups = async () => {
     try {
@@ -293,22 +365,56 @@ export function DockPage({ localApps }: DockPageProps) {
     });
   };
 
-  // Remove a single app from Dock into hidden tray (auto-deletes group if empty)
-  const moveAppToHidden = (groupId: string, appId: string) => {
-    setGroups((prev) =>
-      pruneEmptyGroups(
-        prev.map((g) =>
-          g.id === groupId
-            ? {
-                ...g,
-                appIds: g.appIds.filter((id) => id !== appId),
-                keepEmpty: false,
-              }
-            : g
+  // Remove a single app from Dock or Ungrouped into hidden tray (auto-deletes group if empty)
+  const moveAppToHidden = (
+    sourceGroupId: string | "ungrouped",
+    appId: string
+  ) => {
+    if (sourceGroupId === "ungrouped") {
+      setUngroupedAppIds((prev) => prev.filter((id) => id !== appId));
+    } else {
+      setGroups((prev) =>
+        pruneEmptyGroups(
+          prev.map((g) =>
+            g.id === sourceGroupId
+              ? {
+                  ...g,
+                  appIds: g.appIds.filter((id) => id !== appId),
+                  keepEmpty: false,
+                }
+              : g
+          )
         )
-      )
-    );
+      );
+    }
     setHiddenAppIds((prev) => (prev.includes(appId) ? prev : [...prev, appId]));
+  };
+
+  // Move an app into the "未分组" staging tray
+  const moveAppToUngrouped = (
+    sourceGroupId: string | "hidden",
+    appId: string
+  ) => {
+    if (sourceGroupId === "hidden") {
+      setHiddenAppIds((prev) => prev.filter((id) => id !== appId));
+    } else {
+      setGroups((prev) =>
+        pruneEmptyGroups(
+          prev.map((g) =>
+            g.id === sourceGroupId
+              ? {
+                  ...g,
+                  appIds: g.appIds.filter((id) => id !== appId),
+                  keepEmpty: false,
+                }
+              : g
+          )
+        )
+      );
+    }
+    setUngroupedAppIds((prev) =>
+      prev.includes(appId) ? prev : [...prev, appId]
+    );
   };
 
   // Drop handler on a group card (reorder groups OR move an app into this group)
@@ -338,6 +444,8 @@ export function DockPage({ localApps }: DockPageProps) {
       }
       if (dragApp.sourceGroupId === "hidden") {
         setHiddenAppIds((prev) => prev.filter((id) => id !== dragApp.appId));
+      } else if (dragApp.sourceGroupId === "ungrouped") {
+        setUngroupedAppIds((prev) => prev.filter((id) => id !== dragApp.appId));
       }
       setGroups((prev) =>
         pruneEmptyGroups(
@@ -382,6 +490,8 @@ export function DockPage({ localApps }: DockPageProps) {
 
     if (dragApp.sourceGroupId === "hidden") {
       setHiddenAppIds((prev) => prev.filter((id) => id !== dragApp.appId));
+    } else if (dragApp.sourceGroupId === "ungrouped") {
+      setUngroupedAppIds((prev) => prev.filter((id) => id !== dragApp.appId));
     }
 
     setGroups((prev) => {
@@ -401,7 +511,10 @@ export function DockPage({ localApps }: DockPageProps) {
         return pruneEmptyGroups(next);
       }
 
-      if (dragApp.sourceGroupId !== "hidden") {
+      if (
+        dragApp.sourceGroupId !== "hidden" &&
+        dragApp.sourceGroupId !== "ungrouped"
+      ) {
         const src = next.find((g) => g.id === dragApp.sourceGroupId);
         if (src) {
           src.appIds = src.appIds.filter((id) => id !== dragApp.appId);
@@ -418,6 +531,16 @@ export function DockPage({ localApps }: DockPageProps) {
       }
       return pruneEmptyGroups(next);
     });
+    clearDragState();
+  };
+
+  // Drop handler on ungrouped staging tray
+  const handleDropOnUngrouped = () => {
+    if (!dragApp || dragApp.sourceGroupId === "ungrouped") {
+      clearDragState();
+      return;
+    }
+    moveAppToUngrouped(dragApp.sourceGroupId, dragApp.appId);
     clearDragState();
   };
 
@@ -439,8 +562,9 @@ export function DockPage({ localApps }: DockPageProps) {
     }
     const defaults = buildDefaultGroups(localApps);
     setGroups(defaults.groups);
+    setUngroupedAppIds(defaults.ungroupedAppIds);
     setHiddenAppIds(defaults.hiddenAppIds);
-    setMessage("已重置为默认分类顺序（菜单栏常驻应用默认不放 Dock）");
+    setMessage("已按「新机起航」顺序重置分组，其余软件已放入「未分组」等待调整");
   };
 
   const handleApplyDock = async () => {
@@ -511,6 +635,15 @@ export function DockPage({ localApps }: DockPageProps) {
       })
       .filter((g) => g.appIds.length > 0);
   }, [groups, q, appById]);
+
+  const ungroupedApps = useMemo(
+    () =>
+      ungroupedAppIds
+        .map((id) => appById.get(id))
+        .filter((a): a is LocalAppCandidate => !!a)
+        .filter((a) => !q || a.name.toLowerCase().includes(q)),
+    [ungroupedAppIds, appById, q]
+  );
 
   const hiddenApps = useMemo(
     () =>
@@ -787,6 +920,84 @@ export function DockPage({ localApps }: DockPageProps) {
               );
             })}
           </div>
+
+          {/* Ungrouped Staging Tray (Non-Starter-Pack / Newly Installed Apps) */}
+          {(ungroupedApps.length > 0 || dragApp !== null) && (
+            <div
+              onDragOver={(e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = "move";
+                if (!dragOverUngrouped) setDragOverUngrouped(true);
+              }}
+              onDragLeave={(e) => {
+                if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+                  setDragOverUngrouped(false);
+                }
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                handleDropOnUngrouped();
+              }}
+              className={cn(
+                "rounded-xl border border-dashed border-amber-500/40 bg-amber-500/[0.04] p-3 transition-colors",
+                dragOverUngrouped &&
+                  "border-primary bg-primary/5 ring-2 ring-primary/25"
+              )}
+            >
+              <div className="flex items-center justify-between pb-2">
+                <span className="text-xs font-semibold text-amber-700 dark:text-amber-400">
+                  未分组 · 待调整（{ungroupedApps.length}）
+                </span>
+                <span className="text-[10.5px] text-muted-foreground">
+                  新安装的软件默认停在这里，拖入上方分组即可加入 Dock，或点击 × 移到下方暂不放入
+                </span>
+              </div>
+              {ungroupedApps.length > 0 ? (
+                <div className="flex flex-wrap gap-1.5">
+                  {ungroupedApps.map((app) => (
+                    <div
+                      key={app.id}
+                      draggable
+                      onDragStart={(e) => {
+                        e.stopPropagation();
+                        e.dataTransfer.effectAllowed = "move";
+                        e.dataTransfer.setData("text/plain", `ungrouped:${app.id}`);
+                        setDragGroupId(null);
+                        setDragApp({ sourceGroupId: "ungrouped", appId: app.id });
+                      }}
+                      onDragEnd={clearDragState}
+                      title={`拖动「${app.name}」到上方分组加入 Dock`}
+                      className="group/tile relative flex w-[66px] select-none flex-col items-center gap-1 rounded-lg border border-border/60 bg-card/80 p-1.5 transition-all hover:border-primary/50 hover:bg-card cursor-grab active:cursor-grabbing"
+                    >
+                      <button
+                        type="button"
+                        title="移到暂不放入 Dock"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          moveAppToHidden("ungrouped", app.id);
+                        }}
+                        className="absolute top-0.5 right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-background/90 text-muted-foreground opacity-0 shadow-xs transition-opacity hover:bg-destructive hover:text-destructive-foreground group-hover/tile:opacity-100 cursor-pointer"
+                      >
+                        <X className="h-2.5 w-2.5" />
+                      </button>
+                      <AppIcon
+                        name={app.name}
+                        nativeIcon={app.icon_data_url}
+                        size="sm"
+                      />
+                      <span className="w-full truncate text-center text-[10.5px] leading-tight font-medium text-foreground/90">
+                        {app.name}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="py-1.5 text-center text-[11px] text-muted-foreground">
+                  可先拖到这里暂存，稍后再归入上方分组
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Unassigned / Excluded from Dock Dropzone */}
           <div
