@@ -173,6 +173,7 @@ export type ThemeMode = "light" | "warm" | "dark";
 export type NavTab =
   | "env"
   | "proxy"
+  | "lan_server"
   | "starter"
   | "discover"
   | "apps"
@@ -214,4 +215,28 @@ export interface ProxyTestResult {
   ok: boolean;
   latency_ms: number | null;
   error: string | null;
+}
+
+export interface LanServerLogEntry {
+  id: number;
+  time: string;
+  client_ip: string;
+  method: string;
+  path: string;
+  status: number;
+  detail: string | null;
+}
+
+export interface LanServerStatus {
+  running: boolean;
+  root_dir: string | null;
+  port: number;
+  show_hidden: boolean;
+  serve_index: boolean;
+  allow_upload: boolean;
+  urls: string[];
+  primary_url: string | null;
+  started_at: string | null;
+  request_count: number;
+  recent_logs: LanServerLogEntry[];
 }

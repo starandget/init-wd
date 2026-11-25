@@ -1,12 +1,19 @@
 import { ChevronRight } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
-import type { EnvStatus, NavTab, ProxyConfig, UpdateCheckResult } from "@/types";
+import type {
+  EnvStatus,
+  LanServerStatus,
+  NavTab,
+  ProxyConfig,
+  UpdateCheckResult,
+} from "@/types";
 
 interface StatusBarProps {
   activeTab: NavTab;
   env: EnvStatus | null;
   proxyConfig?: ProxyConfig | null;
+  lanServerStatus?: LanServerStatus | null;
   updateInfo: UpdateCheckResult | null;
   activeTaskCount: number;
   installedCount: number;
@@ -18,6 +25,7 @@ interface StatusBarProps {
 const TAB_LABELS: Record<NavTab, string> = {
   env: "本机环境",
   proxy: "局域网加速",
+  lan_server: "局域网服务",
   starter: "新机启航",
   discover: "浏览软件",
   apps: "我的软件",
@@ -39,6 +47,7 @@ export function StatusBar({
   activeTab,
   env,
   proxyConfig,
+  lanServerStatus,
   updateInfo,
   activeTaskCount,
   installedCount,
@@ -127,6 +136,21 @@ export function StatusBar({
             </button>
           </>
         )}
+
+        {lanServerStatus?.running && (
+          <>
+            <span className="opacity-35">·</span>
+            <button
+              type="button"
+              onClick={() => onSelectTab("lan_server")}
+              title={`局域网文件服务运行中：${lanServerStatus.primary_url || `:${lanServerStatus.port}`}`}
+              className="flex items-center gap-1 text-emerald-600 hover:underline dark:text-emerald-400 cursor-pointer"
+            >
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              <span>服务 :{lanServerStatus.port}</span>
+            </button>
+          </>
+        )}
       </div>
 
       {/* Right: Running Tasks + Version */}
@@ -143,7 +167,7 @@ export function StatusBar({
         )}
 
         <span className="font-mono text-[10.5px] opacity-80">
-          v{updateInfo?.current_version || "0.0.3"}
+          v{updateInfo?.current_version || "0.0.4"}
         </span>
       </div>
     </footer>

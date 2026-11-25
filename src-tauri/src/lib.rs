@@ -1,7 +1,7 @@
 mod commands;
 mod models;
 
-use commands::{catalog, dock, env, installer, profile, proxy, tweaks};
+use commands::{catalog, dock, env, installer, lan_server, profile, proxy, tweaks};
 use tauri::{
     menu::{Menu, MenuItem, PredefinedMenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
@@ -53,6 +53,7 @@ fn open_main_window(app: tauri::AppHandle) {
 
 #[tauri::command]
 fn quit_app(app: tauri::AppHandle) {
+    lan_server::shutdown_if_running();
     app.exit(0);
 }
 
@@ -102,7 +103,10 @@ pub fn run() {
                 .show_menu_on_left_click(false)
                 .on_menu_event(|app, event| match event.id.as_ref() {
                     "open" => show_main_window(app),
-                    "quit" => app.exit(0),
+                    "quit" => {
+                        lan_server::shutdown_if_running();
+                        app.exit(0);
+                    }
                     _ => {}
                 })
                 .on_tray_icon_event(|tray, event| {
@@ -201,6 +205,12 @@ pub fn run() {
             proxy::set_proxy_config,
             proxy::test_proxy,
             proxy::discover_lan_proxies,
+            lan_server::get_lan_server_status,
+            lan_server::start_lan_server,
+            lan_server::stop_lan_server,
+            lan_server::update_lan_server_config,
+            lan_server::clear_lan_server_logs,
+            lan_server::open_folder_in_finder,
             tweaks::get_mac_tweaks,
             tweaks::set_mac_tweak,
             tweaks::open_system_pane,

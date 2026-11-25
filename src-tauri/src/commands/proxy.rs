@@ -256,7 +256,7 @@ async fn get_iface_ipv4(iface: &str) -> Option<Ipv4Addr> {
     }
 }
 
-async fn detect_local_lan_ipv4s() -> Vec<Ipv4Addr> {
+pub(crate) async fn detect_local_lan_ipv4s() -> Vec<Ipv4Addr> {
     let mut ips = Vec::new();
     let mut seen = HashSet::new();
 

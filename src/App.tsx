@@ -10,6 +10,7 @@ import { isAppInList } from "./lib/appMatch";
 import { DockPage } from "./pages/DockPage";
 import { DiscoverPage, type DiscoverMode } from "./pages/DiscoverPage";
 import { EnvPrepPage } from "./pages/EnvPrepPage";
+import { LanServerPage } from "./pages/LanServerPage";
 import { MyAppsPage } from "./pages/MyAppsPage";
 import { ProxyPage } from "./pages/ProxyPage";
 import { QueuePage } from "./pages/QueuePage";
@@ -23,6 +24,8 @@ import type {
   InstalledInfo,
   InstallProgressEvent,
   InstallTask,
+  LanServerLogEntry,
+  LanServerStatus,
   LocalAppCandidate,
   NavTab,
   ProxyConfig,
@@ -63,6 +66,7 @@ export default function App() {
   const [proxyConfig, setProxyConfig] = useState<ProxyConfig | null>(null);
   const proxyConfigRef = useRef<ProxyConfig | null>(null);
   proxyConfigRef.current = proxyConfig;
+  const [lanServerStatus, setLanServerStatus] = useState<LanServerStatus | null>(null);
   const [envLogs, setEnvLogs] = useState<string[]>([]);
   const [installingBrew, setInstallingBrew] = useState(false);
   const [discoverMode, setDiscoverMode] = useState<DiscoverMode>("cn");
@@ -100,12 +104,14 @@ export default function App() {
 
   const refreshEnv = useCallback(async () => {
     try {
-      const [status, proxy] = await Promise.all([
+      const [status, proxy, lanServer] = await Promise.all([
         api.getEnvStatus(),
         api.getProxyConfig().catch(() => null),
+        api.getLanServerStatus().catch(() => null),
       ]);
       setEnv(status);
       if (proxy) setProxyConfig(proxy);
+      if (lanServer) setLanServerStatus(lanServer);
     } catch (e) {
       console.error("getEnvStatus failed:", e);
     }
@@ -214,9 +220,22 @@ export default function App() {
       }
     });
 
+    const unlistenLanLog = listen<LanServerLogEntry>("lan-server-log", (event) => {
+      const entry = event.payload;
+      setLanServerStatus((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          request_count: prev.request_count + 1,
+          recent_logs: [entry, ...prev.recent_logs].slice(0, 120),
+        };
+      });
+    });
+
     return () => {
       unlistenProgress.then((fn) => fn());
       unlistenEnv.then((fn) => fn());
+      unlistenLanLog.then((fn) => fn());
     };
   }, [refreshEnv]);
 
@@ -577,6 +596,7 @@ export default function App() {
           onSelectTab={setActiveTab}
           env={env}
           proxyConfig={proxyConfig}
+          lanServerStatus={lanServerStatus}
           updateInfo={updateInfo}
           activeTaskCount={activeTaskCount}
           installedCount={installedCount}
@@ -603,6 +623,13 @@ export default function App() {
             <ProxyPage
               proxyConfig={proxyConfig}
               onProxyChange={setProxyConfig}
+            />
+          )}
+
+          {activeTab === "lan_server" && (
+            <LanServerPage
+              status={lanServerStatus}
+              onStatusChange={setLanServerStatus}
             />
           )}
 
@@ -723,6 +750,7 @@ export default function App() {
         activeTab={activeTab}
         env={env}
         proxyConfig={proxyConfig}
+        lanServerStatus={lanServerStatus}
         updateInfo={updateInfo}
         activeTaskCount={activeTaskCount}
         installedCount={installedCount}

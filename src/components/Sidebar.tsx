@@ -8,6 +8,7 @@ import {
   Moon,
   Package,
   Rocket,
+  Server,
   Settings,
   SlidersHorizontal,
   Sun,
@@ -28,6 +29,7 @@ import {
 import { cn } from "@/lib/utils";
 import type {
   EnvStatus,
+  LanServerStatus,
   NavTab,
   ProxyConfig,
   ThemeMode,
@@ -39,6 +41,7 @@ interface SidebarProps {
   onSelectTab: (tab: NavTab) => void;
   env: EnvStatus | null;
   proxyConfig?: ProxyConfig | null;
+  lanServerStatus?: LanServerStatus | null;
   updateInfo: UpdateCheckResult | null;
   activeTaskCount: number;
   installedCount: number;
@@ -60,6 +63,7 @@ const NAV_GROUPS: NavGroupConfig[] = [
     items: [
       { id: "env", label: "本机环境", icon: Cpu },
       { id: "proxy", label: "局域网加速", icon: Wifi },
+      { id: "lan_server", label: "局域网服务", icon: Server },
     ],
   },
   {
@@ -91,6 +95,7 @@ export function Sidebar({
   activeTab,
   onSelectTab,
   proxyConfig,
+  lanServerStatus,
   updateInfo,
   activeTaskCount,
   installedCount,
@@ -140,6 +145,13 @@ export function Sidebar({
                           proxyConfig.url && (
                             <span
                               title={`已启用局域网加速 ${proxyConfig.url}`}
+                              className="h-2 w-2 rounded-full bg-emerald-500"
+                            />
+                          )}
+                        {item.id === "lan_server" &&
+                          lanServerStatus?.running && (
+                            <span
+                              title={`局域网服务运行中 :${lanServerStatus.port}`}
                               className="h-2 w-2 rounded-full bg-emerald-500"
                             />
                           )}

@@ -127,6 +127,40 @@ export const api = {
   discoverLanProxies: () =>
     invoke<import("./types").DiscoveredProxy[]>("discover_lan_proxies"),
 
+  getLanServerStatus: () =>
+    invoke<import("./types").LanServerStatus>("get_lan_server_status"),
+  startLanServer: (params: {
+    rootDir: string;
+    port: number;
+    showHidden: boolean;
+    serveIndex: boolean;
+    allowUpload: boolean;
+  }) => invoke<import("./types").LanServerStatus>("start_lan_server", params),
+  stopLanServer: () =>
+    invoke<import("./types").LanServerStatus>("stop_lan_server"),
+  updateLanServerConfig: (params: {
+    rootDir: string | null;
+    port: number;
+    showHidden: boolean;
+    serveIndex: boolean;
+    allowUpload: boolean;
+  }) =>
+    invoke<import("./types").LanServerStatus>("update_lan_server_config", params),
+  clearLanServerLogs: () =>
+    invoke<import("./types").LanServerStatus>("clear_lan_server_logs"),
+  openFolderInFinder: (path: string) =>
+    invoke<void>("open_folder_in_finder", { path }),
+  pickDirectoryDialog: async (defaultPath?: string): Promise<string | null> => {
+    const selected = await openDialog({
+      title: "选择局域网共享目录",
+      directory: true,
+      multiple: false,
+      defaultPath: defaultPath || undefined,
+    });
+    if (!selected || Array.isArray(selected)) return null;
+    return selected;
+  },
+
   getMacTweaks: () =>
     invoke<import("./types").MacTweaksStatus>("get_mac_tweaks"),
   setMacTweak: (key: import("./types").MacTweakKey, enabled: boolean) =>
