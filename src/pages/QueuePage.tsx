@@ -130,7 +130,7 @@ interface QueuePageProps {
   env?: EnvStatus | null;
   proxyConfig?: ProxyConfig | null;
   installConcurrency?: number;
-  onRetry: (item: AppItem) => void;
+  onRetry: (item: AppItem, action: InstallTask["action"]) => void;
   onCancelTask: (taskId: string) => void;
   onCancelAll: () => void;
   onClearFinished: () => void;
@@ -338,7 +338,7 @@ export function QueuePage({
                       )}
                       {task.status === "error" && (
                         <>
-                          {fallbackUrl && (
+                          {task.action !== "uninstall" && fallbackUrl && (
                             <Button
                               size="sm"
                               variant="outline"
@@ -348,7 +348,7 @@ export function QueuePage({
                               官网手动下载
                             </Button>
                           )}
-                          <Button size="sm" onClick={() => onRetry(task.app)}>
+                          <Button size="sm" onClick={() => onRetry(task.app, task.action)}>
                             <RotateCcw className="h-3.5 w-3.5" />
                             重试
                           </Button>

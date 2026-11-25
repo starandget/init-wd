@@ -5,8 +5,35 @@ use commands::{catalog, dock, env, installer, profile, proxy, tweaks};
 use tauri::{
     menu::{Menu, MenuItem, PredefinedMenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    Manager, PhysicalPosition, WebviewUrl, WebviewWindowBuilder, WindowEvent,
+    Manager, PhysicalPosition, PhysicalSize, WebviewUrl, WebviewWindow, WebviewWindowBuilder,
+    WindowEvent,
 };
+
+fn fit_main_window_height(win: &WebviewWindow) {
+    let monitor = win
+        .current_monitor()
+        .ok()
+        .flatten()
+        .or_else(|| win.primary_monitor().ok().flatten());
+
+    if let Some(monitor) = monitor {
+        let work = monitor.work_area();
+        if let (Ok(inner), Ok(outer)) = (win.inner_size(), win.outer_size()) {
+            let chrome_h = outer.height.saturating_sub(inner.height);
+            let target_inner_h = work.size.height.saturating_sub(chrome_h).max(1);
+            let x = work.position.x + ((work.size.width as i32 - outer.width as i32) / 2).max(0);
+            let y = work.position.y;
+
+            let _ = win.set_position(PhysicalPosition::new(x, y));
+            let _ = win.set_size(PhysicalSize::new(inner.width, target_inner_h));
+
+            let outer_w = win.outer_size().map(|s| s.width).unwrap_or(outer.width);
+            let final_x =
+                work.position.x + ((work.size.width as i32 - outer_w as i32) / 2).max(0);
+            let _ = win.set_position(PhysicalPosition::new(final_x, y));
+        }
+    }
+}
 
 fn show_main_window(app: &tauri::AppHandle) {
     if let Some(pop) = app.get_webview_window("tray-popover") {
@@ -35,6 +62,12 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
+            if let Some(win) = app.get_webview_window("main") {
+                fit_main_window_height(&win);
+                let _ = win.show();
+                let _ = win.set_focus();
+            }
+
             // Create hidden macOS menu-bar popover window
             let popover = WebviewWindowBuilder::new(
                 app,

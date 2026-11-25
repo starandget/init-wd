@@ -356,7 +356,7 @@ export function SettingsPage({
                     <div className="flex items-center gap-2 text-sm font-medium">
                       <span>Star Box 当前版本</span>
                       <Badge variant="secondary" className="font-mono">
-                        v{updateInfo?.current_version || "0.0.2"}
+                        v{updateInfo?.current_version || "0.0.3"}
                       </Badge>
                       {updateInfo?.has_update && (
                         <Badge variant="info">

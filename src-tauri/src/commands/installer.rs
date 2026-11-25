@@ -3,13 +3,15 @@ use crate::commands::env::{find_brew_path, home_dir, kill_process_group, mirror_
 use crate::models::{AppItem, InstallProgressEvent, InstalledInfo, LocalAppCandidate};
 use base64::Engine as _;
 use std::collections::{HashMap, HashSet, VecDeque};
+#[cfg(unix)]
+use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter};
-use tokio::io::{AsyncRead, AsyncReadExt};
+use tokio::io::{AsyncRead, AsyncReadExt, AsyncWriteExt};
 use tokio::process::Command;
 
 #[derive(Clone)]
@@ -798,6 +800,47 @@ fn brew_output_is_lock_conflict(output: &str) -> bool {
         || lower.contains("process is already in progress")
 }
 
+struct TempFileGuard(PathBuf);
+
+impl Drop for TempFileGuard {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_file(&self.0);
+    }
+}
+
+fn create_brew_askpass_helper() -> Option<TempFileGuard> {
+    let path = std::env::temp_dir().join(format!("starbox-brew-askpass-{}.sh", uuid::Uuid::new_v4()));
+    let script = r#"#!/bin/bash
+LOCK_DIR="/tmp/starbox-sudo-askpass.lock"
+LOCKED=0
+cleanup() { [ "$LOCKED" = "1" ] && rm -rf "$LOCK_DIR" 2>/dev/null || true; }
+trap cleanup EXIT
+trap 'cleanup; exit 130' INT TERM
+for _ in $(seq 1 240); do
+  if mkdir "$LOCK_DIR" 2>/dev/null; then
+    echo "$$" > "$LOCK_DIR/pid"
+    LOCKED=1
+    break
+  fi
+  if [ -f "$LOCK_DIR/pid" ]; then
+    OLD_PID="$(cat "$LOCK_DIR/pid" 2>/dev/null)"
+    if [ -n "$OLD_PID" ] && ! kill -0 "$OLD_PID" 2>/dev/null; then
+      rm -rf "$LOCK_DIR" 2>/dev/null || true
+      continue
+    fi
+  fi
+  sleep 0.25
+done
+osascript -e 'text returned of (display dialog "Star Box 安装或卸载软件需要管理员密码：" default answer "" with hidden answer with title "Star Box 管理员授权")' 2>/dev/null
+"#;
+    std::fs::write(&path, script).ok()?;
+    #[cfg(unix)]
+    {
+        let _ = std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o700));
+    }
+    Some(TempFileGuard(path))
+}
+
 async fn run_brew_stream(
     app: &AppHandle,
     task_id: &str,
@@ -807,12 +850,16 @@ async fn run_brew_stream(
     mirror_preset: &str,
     ctrl: &TaskControl,
 ) -> Result<(bool, String), String> {
+    let askpass_guard = create_brew_askpass_helper();
     let mut env_pairs: Vec<(&str, String)> = vec![
         ("HOMEBREW_NO_AUTO_UPDATE", "1".to_string()),
         ("HOMEBREW_NO_COLOR", "1".to_string()),
         // Force single-stream curl progress bar (##### 42.3%) in PTY instead of quiet multi-download table
         ("HOMEBREW_DOWNLOAD_CONCURRENCY", "1".to_string()),
     ];
+    if let Some(ref guard) = askpass_guard {
+        env_pairs.push(("SUDO_ASKPASS", guard.0.to_string_lossy().to_string()));
+    }
     for (k, v) in mirror_env_vars(mirror_preset) {
         env_pairs.push((k, v.to_string()));
     }
@@ -932,6 +979,8 @@ fn validate_app_bundle_source(
                 && !n.starts_with('.')
                 && !n.contains('/')
                 && !n.contains("..")
+                && !n.contains('\n')
+                && !n.contains('\r')
                 && n.to_lowercase().ends_with(".app")
         })
         .ok_or_else(|| "无效的 .app 路径".to_string())?;
@@ -966,12 +1015,129 @@ fn validate_app_bundle_source(
     Ok(name.to_string())
 }
 
+fn validate_pkg_source(pkg_path: &Path, allowed_root: &Path) -> Result<PathBuf, String> {
+    let meta = std::fs::symlink_metadata(pkg_path)
+        .map_err(|e| format!("无法读取 .pkg 安装包信息: {e}"))?;
+    if meta.file_type().is_symlink() {
+        return Err("安全校验失败：.pkg 安装包不能是符号链接".to_string());
+    }
+    let name = pkg_path
+        .file_name()
+        .and_then(|n| n.to_str())
+        .filter(|n| {
+            !n.is_empty()
+                && !n.starts_with('.')
+                && !n.contains('/')
+                && !n.contains("..")
+                && !n.contains('\n')
+                && !n.contains('\r')
+                && n.to_lowercase().ends_with(".pkg")
+        })
+        .ok_or_else(|| "无效的 .pkg 路径".to_string())?;
+    let _ = name;
+
+    let root_canon = std::fs::canonicalize(allowed_root)
+        .map_err(|e| format!("无法解析安装临时目录: {e}"))?;
+    let pkg_canon = std::fs::canonicalize(pkg_path)
+        .map_err(|e| format!("无法解析 .pkg 路径: {e}"))?;
+    if !pkg_canon.starts_with(&root_canon) || pkg_canon == root_canon {
+        return Err(format!(
+            "安全校验失败：检测到 .pkg 路径越界 ({})，已中止安装",
+            pkg_canon.display()
+        ));
+    }
+    Ok(pkg_canon)
+}
+
+fn validate_uninstall_app_path_with_roots(
+    path: &Path,
+    allowed_parents: &[PathBuf],
+) -> Result<(PathBuf, bool), String> {
+    let meta = std::fs::symlink_metadata(path)
+        .map_err(|e| format!("无法读取待卸载应用信息: {e}"))?;
+    let is_symlink = meta.file_type().is_symlink();
+    if !is_symlink && !meta.file_type().is_dir() {
+        return Err("安全校验失败：目标不是有效的 .app 目录".to_string());
+    }
+
+    let name = path
+        .file_name()
+        .and_then(|n| n.to_str())
+        .filter(|n| {
+            !n.is_empty()
+                && !n.starts_with('.')
+                && !n.contains('/')
+                && !n.contains("..")
+                && !n.contains('\n')
+                && !n.contains('\r')
+                && n.to_lowercase().ends_with(".app")
+        })
+        .ok_or_else(|| "安全校验失败：无效的 .app 卸载目标".to_string())?;
+
+    let lower = name.to_lowercase();
+    if lower == "star box.app" || lower == "safari.app" {
+        return Err(format!("安全校验失败：不允许卸载受保护应用 ({name})"));
+    }
+
+    let parent = path
+        .parent()
+        .ok_or_else(|| "安全校验失败：无法确定应用所在目录".to_string())?;
+    let parent_canon = std::fs::canonicalize(parent)
+        .map_err(|e| format!("安全校验失败：无法解析应用目录: {e}"))?;
+
+    let allowed = allowed_parents.iter().any(|root| {
+        std::fs::canonicalize(root)
+            .map(|r| parent_canon == r)
+            .unwrap_or(false)
+    });
+    if !allowed {
+        return Err(format!(
+            "安全校验失败：拒绝删除非应用程序目录内的路径 ({})",
+            path.display()
+        ));
+    }
+
+    Ok((parent_canon.join(name), is_symlink))
+}
+
+fn validate_uninstall_app_path(path: &Path) -> Result<(PathBuf, bool), String> {
+    let roots = vec![
+        PathBuf::from("/Applications"),
+        home_dir().join("Applications"),
+        PathBuf::from("/Applications/Utilities"),
+    ];
+    validate_uninstall_app_path_with_roots(path, &roots)
+}
+
+fn sanitize_release_asset_name(raw: Option<&str>) -> String {
+    raw.and_then(|n| Path::new(n).file_name())
+        .and_then(|n| n.to_str())
+        .filter(|n| {
+            !n.is_empty()
+                && !n.starts_with('.')
+                && !n.contains('/')
+                && !n.contains('\\')
+                && !n.contains("..")
+                && !n.contains('\n')
+                && !n.contains('\r')
+        })
+        .unwrap_or("installer.dmg")
+        .to_string()
+}
+
 async fn run_admin_shell(
     shell_cmd: &str,
     log_ctx: Option<(&AppHandle, &str, &str, &str)>,
+    ctrl: Option<&TaskControl>,
 ) -> Result<bool, String> {
+    if ctrl.is_some_and(|c| c.is_cancelled()) {
+        return Err("已手动终止".to_string());
+    }
     // Serialize macOS administrator auth & PKG installer calls across concurrent tasks.
     let _admin_guard = admin_shell_lock().lock().await;
+    if ctrl.is_some_and(|c| c.is_cancelled()) {
+        return Err("已手动终止".to_string());
+    }
     if let Some((app, task_id, app_id, stage)) = log_ctx {
         emit_progress(
             app,
@@ -984,7 +1150,11 @@ async fn run_admin_shell(
             false,
         );
     }
-    let escaped = shell_cmd.replace('\\', "\\\\").replace('"', "\\\"");
+    let escaped = shell_cmd
+        .replace('\\', "\\\\")
+        .replace('"', "\\\"")
+        .replace('\r', "")
+        .replace('\n', "; ");
     let script = format!("do shell script \"{escaped}\" with administrator privileges");
     let output = Command::new("osascript")
         .args(["-e", &script])
@@ -1069,7 +1239,7 @@ async fn copy_app_to_dir(
 
     // Try user-level atomic stage-and-swap first so an existing app is never deleted before ditto succeeds.
     let stage_ok = if let Some((app, task_id, app_id, ctrl)) = log_ctx {
-        run_cmd_stream(
+        match run_cmd_stream(
             app,
             task_id,
             app_id,
@@ -1079,8 +1249,14 @@ async fn copy_app_to_dir(
             &[],
             ctrl,
         )
-        .await?
-        .0
+        .await
+        {
+            Ok((ok, _)) => ok,
+            Err(e) => {
+                let _ = std::fs::remove_dir_all(&stage);
+                return Err(e);
+            }
+        }
     } else {
         Command::new("ditto")
             .args([src_s.as_ref(), stage_s.as_ref()])
@@ -1103,6 +1279,10 @@ async fn copy_app_to_dir(
                 ctrl,
             )
             .await;
+            if ctrl.is_cancelled() {
+                let _ = std::fs::remove_dir_all(&stage);
+                return Err("已手动终止".to_string());
+            }
         } else {
             let _ = Command::new("xattr")
                 .args(["-dr", "com.apple.quarantine", stage_s.as_ref()])
@@ -1165,7 +1345,8 @@ async fn copy_app_to_dir(
         "set -e; rm -rf {q_stage} {q_bak}; if ! ditto {q_src} {q_stage}; then rm -rf {q_stage} || true; exit 1; fi; (xattr -dr com.apple.quarantine {q_stage} >/dev/null 2>&1 || true); if [ -e {q_dst} ] || [ -L {q_dst} ]; then mv {q_dst} {q_bak}; if ! mv {q_stage} {q_dst}; then mv {q_bak} {q_dst} || true; rm -rf {q_stage} || true; exit 1; fi; rm -rf {q_bak} || true; else mv {q_stage} {q_dst}; fi"
     );
     let admin_log = log_ctx.map(|(app, tid, aid, _)| (app, tid, aid, "install"));
-    if run_admin_shell(&cmd, admin_log).await? && dest.exists() {
+    let ctrl_ref = log_ctx.map(|(_, _, _, ctrl)| ctrl);
+    if run_admin_shell(&cmd, admin_log, ctrl_ref).await? && dest.exists() {
         Ok(dst_s.to_string())
     } else {
         Err("管理员授权被取消或复制应用失败".to_string())
@@ -1177,14 +1358,113 @@ async fn install_pkg_file(
     task_id: &str,
     app_id: &str,
     pkg_path: &Path,
+    allowed_root: &Path,
+    ctrl: &TaskControl,
 ) -> Result<(), String> {
-    let p = pkg_path.to_string_lossy();
+    let valid_pkg = validate_pkg_source(pkg_path, allowed_root)?;
+    let p = valid_pkg.to_string_lossy();
     let cmd = format!("installer -verboseR -pkg {} -target /", shell_quote(p.as_ref()));
-    if run_admin_shell(&cmd, Some((app, task_id, app_id, "install"))).await? {
+    if run_admin_shell(&cmd, Some((app, task_id, app_id, "install")), Some(ctrl)).await? {
         Ok(())
     } else {
         Err("PKG 安装被取消或失败".to_string())
     }
+}
+
+async fn attach_dmg_silently(
+    app: &AppHandle,
+    task_id: &str,
+    app_id: &str,
+    file: &Path,
+    mnt: &Path,
+    ctrl: &TaskControl,
+) -> Result<bool, String> {
+    if ctrl.is_cancelled() {
+        return Err("已手动终止".to_string());
+    }
+    let file_s = file.to_string_lossy();
+    let mnt_s = mnt.to_string_lossy();
+    let args = [
+        "attach",
+        file_s.as_ref(),
+        "-readonly",
+        "-nobrowse",
+        "-noautoopen",
+        "-mountpoint",
+        mnt_s.as_ref(),
+    ];
+    emit_progress(
+        app,
+        task_id,
+        app_id,
+        "install",
+        format_cmd_line("hdiutil", &args),
+        None,
+        false,
+        false,
+    );
+
+    let mut cmd = Command::new("hdiutil");
+    cmd.args(args)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+    #[cfg(unix)]
+    cmd.process_group(0);
+
+    let mut child = cmd
+        .spawn()
+        .map_err(|e| format!("无法启动 hdiutil: {e}"))?;
+    ctrl.set_pid(child.id());
+    if ctrl.is_cancelled() {
+        if let Some(pid) = child.id() {
+            kill_process_group(pid);
+        }
+        ctrl.set_pid(None);
+        return Err("已手动终止".to_string());
+    }
+
+    // Auto-accept DMG SLA/EULA prompts (ignored by non-EULA DMGs)
+    if let Some(mut stdin) = child.stdin.take() {
+        tokio::spawn(async move {
+            let _ = stdin.write_all(b"Y\nY\nY\n").await;
+            let _ = stdin.shutdown().await;
+        });
+    }
+
+    let stdout = child.stdout.take();
+    let stderr = child.stderr.take();
+    let collected = Arc::new(Mutex::new(String::new()));
+    let t1 = {
+        let app_c = app.clone();
+        let tid_c = task_id.to_string();
+        let aid_c = app_id.to_string();
+        let col_c = Arc::clone(&collected);
+        tokio::spawn(async move {
+            if let Some(out) = stdout {
+                pump_stream(out, app_c, tid_c, aid_c, "install".to_string(), col_c).await;
+            }
+        })
+    };
+    let t2 = {
+        let app_c = app.clone();
+        let tid_c = task_id.to_string();
+        let aid_c = app_id.to_string();
+        let col_c = Arc::clone(&collected);
+        tokio::spawn(async move {
+            if let Some(err) = stderr {
+                pump_stream(err, app_c, tid_c, aid_c, "install".to_string(), col_c).await;
+            }
+        })
+    };
+
+    let status = child.wait().await.map_err(|e| e.to_string())?;
+    ctrl.set_pid(None);
+    let _ = tokio::join!(t1, t2);
+    if ctrl.is_cancelled() {
+        return Err("已手动终止".to_string());
+    }
+    Ok(status.success())
 }
 
 async fn install_downloaded_package(
@@ -1206,24 +1486,7 @@ async fn install_downloaded_package(
         std::fs::create_dir_all(&mnt).map_err(|e| e.to_string())?;
         emit_progress(app, task_id, app_id, "install", "# Mounting DMG...", Some(82), false, false);
 
-        let (attach_ok, _) = run_cmd_stream(
-            app,
-            task_id,
-            app_id,
-            "install",
-            "hdiutil",
-            &[
-                "attach",
-                file.to_string_lossy().as_ref(),
-                "-readonly",
-                "-nobrowse",
-                "-mountpoint",
-                mnt.to_string_lossy().as_ref(),
-            ],
-            &[],
-            ctrl,
-        )
-        .await?;
+        let attach_ok = attach_dmg_silently(app, task_id, app_id, file, &mnt, ctrl).await?;
 
         if !attach_ok {
             return Err("无法挂载 DMG 安装包".to_string());
@@ -1254,26 +1517,22 @@ async fn install_downloaded_package(
                 false,
                 false,
             );
-            install_pkg_file(app, task_id, app_id, &pkg).await
+            install_pkg_file(app, task_id, app_id, &pkg, &mnt, ctrl).await
         } else {
             Err("DMG 镜像中未找到 .app 或 .pkg".to_string())
         };
 
-        let _ = run_cmd_stream(
-            app,
-            task_id,
-            app_id,
-            "install",
-            "hdiutil",
-            &["detach", mnt.to_string_lossy().as_ref(), "-force"],
-            &[],
-            ctrl,
-        )
-        .await;
+        // Always detach mounted DMG even if the task was cancelled or failed, so no mounted image leaks.
+        let _ = Command::new("hdiutil")
+            .args(["detach", mnt.to_string_lossy().as_ref(), "-force"])
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status()
+            .await;
 
         res
     } else if lower.ends_with(".pkg") {
-        install_pkg_file(app, task_id, app_id, file).await
+        install_pkg_file(app, task_id, app_id, file, work_dir, ctrl).await
     } else if lower.ends_with(".zip") {
         let unzip = work_dir.join("unzip");
         std::fs::create_dir_all(&unzip).map_err(|e| e.to_string())?;
@@ -1315,7 +1574,7 @@ async fn install_downloaded_package(
                 .await
                 .map(|_| ())
         } else if let Some(pkg) = find_first_with_ext(&unzip, ".pkg", 3) {
-            install_pkg_file(app, task_id, app_id, &pkg).await
+            install_pkg_file(app, task_id, app_id, &pkg, &unzip, ctrl).await
         } else {
             Err("ZIP 包中未找到 .app 或 .pkg".to_string())
         }
@@ -1352,9 +1611,7 @@ async fn install_via_github(
     let asset_url = rel
         .asset_url
         .ok_or_else(|| format!("仓库 {repo} 最新版本没有可用的 macOS 安装包"))?;
-    let asset_name = rel
-        .asset_name
-        .unwrap_or_else(|| "installer.dmg".to_string());
+    let asset_name = sanitize_release_asset_name(rel.asset_name.as_deref());
 
     let work_dir = std::env::temp_dir().join(format!("starbox-{}", uuid::Uuid::new_v4()));
     std::fs::create_dir_all(&work_dir).map_err(|e| e.to_string())?;
@@ -1726,19 +1983,47 @@ pub async fn uninstall_app(app: AppHandle, task_id: String, item: AppItem) -> Re
         }
     }
 
-    if let Some(path) = find_existing_app(&item.dock_apps) {
-        if !path.starts_with("/System/") {
-            emit_progress(&app, &task_id, &item.id, "uninstall", format!("$ rm -rf {}", shell_quote(&path)), None, false, false);
-            let rm_ok = std::fs::remove_dir_all(&path).is_ok()
-                || run_admin_shell(
-                    &format!("rm -rf {}", shell_quote(&path)),
-                    Some((&app, &task_id, &item.id, "uninstall")),
-                )
-                .await
-                .unwrap_or(false);
-            if rm_ok {
-                emit_progress(&app, &task_id, &item.id, "done", format!("已移除 {path}"), Some(100), true, true);
-                return Ok(());
+    if let Some(raw_path) = find_existing_app(&item.dock_apps) {
+        match validate_uninstall_app_path(Path::new(&raw_path)) {
+            Ok((safe_path, is_symlink)) => {
+                let safe_str = safe_path.to_string_lossy().to_string();
+                let cmd_str = if is_symlink {
+                    format!("rm -f {}", shell_quote(&safe_str))
+                } else {
+                    format!("rm -rf {}", shell_quote(&safe_str))
+                };
+                emit_progress(&app, &task_id, &item.id, "uninstall", format!("$ {cmd_str}"), None, false, false);
+                let user_ok = if is_symlink {
+                    std::fs::remove_file(&safe_path).is_ok()
+                } else {
+                    std::fs::remove_dir_all(&safe_path).is_ok()
+                };
+                let rm_ok = if user_ok {
+                    true
+                } else {
+                    match run_admin_shell(
+                        &cmd_str,
+                        Some((&app, &task_id, &item.id, "uninstall")),
+                        Some(ctrl),
+                    )
+                    .await
+                    {
+                        Ok(ok) => ok,
+                        Err(e) if ctrl.is_cancelled() => {
+                            emit_progress(&app, &task_id, &item.id, "cancelled", "已手动终止", None, true, false);
+                            return Err(e);
+                        }
+                        Err(_) => false,
+                    }
+                };
+                if rm_ok {
+                    emit_progress(&app, &task_id, &item.id, "done", format!("已移除 {safe_str}"), Some(100), true, true);
+                    return Ok(());
+                }
+            }
+            Err(reason) => {
+                emit_progress(&app, &task_id, &item.id, "error", &reason, None, true, false);
+                return Err(reason);
             }
         }
     }
@@ -2124,5 +2409,70 @@ mod tests {
             resolve_website_fallback(&item).as_deref(),
             Some("https://github.com/owner/repo/releases")
         );
+    }
+
+    #[test]
+    fn uninstall_path_validator_blocks_unsafe_targets_and_allows_real_apps() {
+        let tmp = std::env::temp_dir().join(format!("starbox-uninstall-test-{}", uuid::Uuid::new_v4()));
+        let fake_apps = tmp.join("Applications");
+        let outside = tmp.join("Outside");
+        std::fs::create_dir_all(&fake_apps).unwrap();
+        std::fs::create_dir_all(&outside).unwrap();
+
+        let roots = vec![fake_apps.clone()];
+
+        // Valid .app inside allowed root
+        let good_app = make_fake_app(&fake_apps, "Demo.app");
+        let (resolved, is_sym) = validate_uninstall_app_path_with_roots(&good_app, &roots).unwrap();
+        assert_eq!(resolved, std::fs::canonicalize(&fake_apps).unwrap().join("Demo.app"));
+        assert!(!is_sym);
+
+        // Protected apps are rejected
+        let star_box = make_fake_app(&fake_apps, "Star Box.app");
+        assert!(validate_uninstall_app_path_with_roots(&star_box, &roots).is_err());
+
+        // Non-.app directory or root directory itself is rejected
+        assert!(validate_uninstall_app_path_with_roots(&fake_apps, &roots).is_err());
+        let non_app = fake_apps.join("NotAnApp");
+        std::fs::create_dir_all(&non_app).unwrap();
+        assert!(validate_uninstall_app_path_with_roots(&non_app, &roots).is_err());
+
+        // Outside allowed root is rejected
+        let outside_app = make_fake_app(&outside, "Outside.app");
+        assert!(validate_uninstall_app_path_with_roots(&outside_app, &roots).is_err());
+
+        // Symlink .app inside allowed root is marked is_symlink = true (never rm -rf target)
+        let sym_app = fake_apps.join("Linked.app");
+        symlink(&outside_app, &sym_app).unwrap();
+        let (_, is_sym2) = validate_uninstall_app_path_with_roots(&sym_app, &roots).unwrap();
+        assert!(is_sym2);
+
+        let _ = std::fs::remove_dir_all(&tmp);
+    }
+
+    #[test]
+    fn pkg_validator_and_release_asset_sanitizer_block_escape() {
+        let tmp = std::env::temp_dir().join(format!("starbox-pkg-test-{}", uuid::Uuid::new_v4()));
+        let root = tmp.join("work");
+        let outside = tmp.join("outside");
+        std::fs::create_dir_all(&root).unwrap();
+        std::fs::create_dir_all(&outside).unwrap();
+
+        let good_pkg = root.join("Installer.pkg");
+        std::fs::write(&good_pkg, b"pkg").unwrap();
+        assert!(validate_pkg_source(&good_pkg, &root).is_ok());
+
+        let ext_pkg = outside.join("Evil.pkg");
+        std::fs::write(&ext_pkg, b"pkg").unwrap();
+        let sym_pkg = root.join("Link.pkg");
+        symlink(&ext_pkg, &sym_pkg).unwrap();
+        assert!(validate_pkg_source(&sym_pkg, &root).is_err());
+        assert!(validate_pkg_source(&ext_pkg, &root).is_err());
+
+        assert_eq!(sanitize_release_asset_name(Some("../../evil.dmg")), "evil.dmg");
+        assert_eq!(sanitize_release_asset_name(Some("..")), "installer.dmg");
+        assert_eq!(sanitize_release_asset_name(Some("Clash.Verge_arm64.dmg")), "Clash.Verge_arm64.dmg");
+
+        let _ = std::fs::remove_dir_all(&tmp);
     }
 }

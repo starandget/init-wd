@@ -143,7 +143,7 @@ export function StatusBar({
         )}
 
         <span className="font-mono text-[10.5px] opacity-80">
-          v{updateInfo?.current_version || "0.0.2"}
+          v{updateInfo?.current_version || "0.0.3"}
         </span>
       </div>
     </footer>

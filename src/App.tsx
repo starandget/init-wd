@@ -175,6 +175,7 @@ export default function App() {
         setTasks((prev) =>
           prev.map((t) => {
             if (t.task_id !== p.task_id) return t;
+            if (cancelledTaskIdsRef.current.has(p.task_id) && !p.done) return t;
             const nextStatus = p.done
               ? p.success
                 ? "success"
@@ -300,13 +301,21 @@ export default function App() {
             })
           );
           if (!isCancelled) {
+            const actionText =
+              t.action === "upgrade"
+                ? "更新"
+                : t.action === "uninstall"
+                ? "卸载"
+                : "安装";
             const fallbackUrl =
-              t.app.website?.trim() ||
-              (t.app.github_repo?.trim()
-                ? `https://github.com/${t.app.github_repo.trim().replace(/^\/+|\/+$/g, "")}/releases`
-                : null);
+              t.action === "uninstall"
+                ? null
+                : t.app.website?.trim() ||
+                  (t.app.github_repo?.trim()
+                    ? `https://github.com/${t.app.github_repo.trim().replace(/^\/+|\/+$/g, "")}/releases`
+                    : null);
             showToast({
-              title: `${t.app.name} 自动安装失败`,
+              title: `${t.app.name} ${actionText}失败`,
               description: fallbackUrl
                 ? `可前往官网手动下载：${fallbackUrl}`
                 : "请展开任务队列查看完整命令行日志",
@@ -647,7 +656,7 @@ export default function App() {
             env={env}
             proxyConfig={proxyConfig}
             installConcurrency={Math.min(5, Math.max(1, profile?.install_concurrency ?? 5))}
-            onRetry={(item) => enqueueAndRun([item], "install")}
+            onRetry={(item, action) => enqueueAndRun([item], action)}
             onCancelTask={handleCancelTask}
             onCancelAll={handleCancelAllTasks}
             onClearFinished={() =>
