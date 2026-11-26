@@ -148,6 +148,10 @@ export const api = {
     invoke<import("./types").LanServerStatus>("update_lan_server_config", params),
   clearLanServerLogs: () =>
     invoke<import("./types").LanServerStatus>("clear_lan_server_logs"),
+  addLanNote: (text: string) =>
+    invoke<import("./types").LanServerStatus>("add_lan_note", { text }),
+  clearLanNotes: () =>
+    invoke<import("./types").LanServerStatus>("clear_lan_notes"),
   openFolderInFinder: (path: string) =>
     invoke<void>("open_folder_in_finder", { path }),
   pickDirectoryDialog: async (defaultPath?: string): Promise<string | null> => {

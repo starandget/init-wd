@@ -125,18 +125,13 @@ export function TrayClockPopover() {
       const mode =
         saved === "light" || saved === "warm" || saved === "dark"
           ? saved
-          : window.matchMedia?.("(prefers-color-scheme: dark)").matches
-          ? "dark"
           : "light";
       document.documentElement.classList.toggle("dark", mode === "dark");
       document.documentElement.classList.toggle("warm", mode === "warm");
     };
     apply();
-    const media = window.matchMedia?.("(prefers-color-scheme: dark)");
-    media?.addEventListener("change", apply);
     window.addEventListener("storage", apply);
     return () => {
-      media?.removeEventListener("change", apply);
       window.removeEventListener("storage", apply);
     };
   }, []);

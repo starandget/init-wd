@@ -167,7 +167,7 @@ export function MyAppsPage({
       <header className="flex h-13 shrink-0 items-center justify-between gap-4 border-b border-border bg-card/80 px-5 backdrop-blur-md">
         <div className="flex items-center gap-2.5">
           <h2 className="shrink-0 text-base font-semibold tracking-tight">
-            我的软件
+            已装应用
           </h2>
           <span className="rounded-full bg-primary/12 px-2 py-0.5 text-[11px] font-medium text-primary tabular-nums">
             {localApps.length}

@@ -616,7 +616,7 @@
       <section class="hero">
         <div class="glow"></div>
         <div class="container">
-          <div class="badge" id="hero-badge">✦ 最新正式版 v0.0.4 · Tauri v2 + React 19 + shadcn/ui + Rust</div>
+          <div class="badge" id="hero-badge">✦ 最新正式版 v0.0.5 · Tauri v2 + React 19 + shadcn/ui + Rust</div>
           <h1>
             不用敲一行命令，<br />
             <span class="gradient-text">优雅掌控你的 Mac 软件、Dock 与系统设置</span>
@@ -669,19 +669,20 @@
             </div>
             <div class="window-body">
               <div class="mock-sidebar">
-                <div style="font-size: 10.5px; color: var(--muted); padding: 2px 8px">环境与网络</div>
+                <div style="font-size: 10.5px; color: var(--muted); padding: 2px 8px">装机准备</div>
                 <div class="mock-nav"><span>本机环境</span></div>
-                <div class="mock-nav"><span>局域网加速</span><span class="pill ok">已启用</span></div>
-                <div class="mock-nav"><span>局域网服务</span><span class="pill ok">:8080</span></div>
-                <div style="font-size: 10.5px; color: var(--muted); padding: 6px 8px 2px">软件管理</div>
-                <div class="mock-nav active"><span>浏览软件</span><span>59+18</span></div>
-                <div class="mock-nav"><span>我的软件</span><span>19</span></div>
+                <div style="font-size: 10.5px; color: var(--muted); padding: 6px 8px 2px">局域网</div>
+                <div class="mock-nav"><span>下载加速</span><span class="pill ok">已启用</span></div>
+                <div class="mock-nav"><span>文件共享</span><span class="pill ok">:8080</span></div>
+                <div style="font-size: 10.5px; color: var(--muted); padding: 6px 8px 2px">软件中心</div>
+                <div class="mock-nav active"><span>发现应用</span><span>59+18</span></div>
+                <div class="mock-nav"><span>已装应用</span><span>19</span></div>
                 <div class="mock-nav"><span>任务队列</span><span class="pill blue">1</span></div>
-                <div style="font-size: 10.5px; color: var(--muted); padding: 6px 8px 2px">桌面整理</div>
+                <div style="font-size: 10.5px; color: var(--muted); padding: 6px 8px 2px">桌面</div>
                 <div class="mock-nav"><span>Dock 整理</span></div>
                 <div style="font-size: 10.5px; color: var(--muted); padding: 6px 8px 2px">系统</div>
-                <div class="mock-nav"><span>快捷设置</span></div>
-                <div class="mock-nav"><span>设置</span></div>
+                <div class="mock-nav"><span>快捷调优</span></div>
+                <div class="mock-nav"><span>偏好设置</span></div>
               </div>
               <div class="mock-main">
                 <div class="mock-header">
@@ -691,7 +692,7 @@
                       9 大统一分类 · 局域网加速中 (192.168.1.105:1082 · 42 ms)
                     </div>
                   </div>
-                  <span class="pill blue">Brew 就绪 · arm64 · v0.0.4</span>
+                  <span class="pill blue">Brew 就绪 · arm64 · v0.0.5</span>
                 </div>
                 <div class="mock-grid">
                   <div class="mock-card">
@@ -796,7 +797,7 @@
                   原生适配搭载 Apple M 系列芯片的 MacBook Air、MacBook Pro、Mac mini、iMac 与 Mac Studio。
                 </p>
                 <div class="dl-meta">
-                  <span id="card-ver-arm64">版本：v0.0.4</span>
+                  <span id="card-ver-arm64">版本：v0.0.5</span>
                   <span>·</span>
                   <span>系统要求：macOS 12.0+</span>
                   <span>·</span>
@@ -825,7 +826,7 @@
                   适配 2020 年及更早搭载 Intel 处理器的 Mac 设备。
                 </p>
                 <div class="dl-meta">
-                  <span id="card-ver-x64">版本：v0.0.4</span>
+                  <span id="card-ver-x64">版本：v0.0.5</span>
                   <span>·</span>
                   <span>系统要求：macOS 12.0+</span>
                   <span>·</span>
@@ -867,8 +868,35 @@
             <div class="release-card">
               <div class="release-head">
                 <div class="release-tag">
+                  <span>v0.0.5</span>
+                  <span class="pill blue">最新正式版 · 局域网网页升级、双向快传与导航优化</span>
+                </div>
+                <span class="release-date">2026-11-26 · <a href="https://github.com/starandget/star-box/releases/tag/v0.0.5" target="_blank" rel="noreferrer" style="text-decoration: underline">查看 GitHub Release ↗</a></span>
+              </div>
+              <div class="release-cols">
+                <div class="release-group">
+                  <h4>🖼️ 局域网网页全面升级</h4>
+                  <ul>
+                    <li>新增<strong>列表 / 网格相册视图</strong>一键切换（图片自动懒加载缩略图）、<strong>站内全能预览灯箱</strong>（图片放大与键盘切图、音视频原生播放、PDF 内嵌、代码/文本预览与复制）。</li>
+                    <li>新增文件分类筛选标签、按名称/大小/修改时间排序、快捷键 <code>/</code> 搜索、网页深浅主题切换、一键复制局域网直链（兼容非 HTTPS 手机浏览器）。</li>
+                    <li>开启上传后支持<strong>新建文件夹</strong>、<strong>页面全局拖拽上传</strong>、<strong>Ctrl/Cmd+V 粘贴截图上传</strong>及实时速率显示。</li>
+                  </ul>
+                </div>
+                <div class="release-group">
+                  <h4>💬 局域网双向文字快传 & 导航体验优化</h4>
+                  <ul>
+                    <li>网页端与桌面端同步新增「局域网文字快传」，支持 Mac 与手机/平板/Windows 双向互发文本、链接与验证码并一键复制（纯内存暂存）。</li>
+                    <li>优化侧边栏分组与菜单命名：拆分「装机准备」与「局域网」独立分组，精简重名项（下载加速 / 文件共享 / 发现应用 / 已装应用 / 快捷调优 / 偏好设置），统一默认浅色主题与「浅色 / 深色 / 暖白」排序。</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div class="release-card">
+              <div class="release-head">
+                <div class="release-tag">
                   <span>v0.0.4</span>
-                  <span class="pill blue">最新正式版 · 内置局域网文件服务器</span>
+                  <span class="pill">内置局域网文件服务器</span>
                 </div>
                 <span class="release-date">2026-11-26 · <a href="https://github.com/starandget/star-box/releases/tag/v0.0.4" target="_blank" rel="noreferrer" style="text-decoration: underline">查看 GitHub Release ↗</a></span>
               </div>
@@ -1065,7 +1093,7 @@
           const res = await fetch("https://api.github.com/repos/starandget/star-box/releases/latest");
           if (!res.ok) return;
           const data = await res.json();
-          const tag = data.tag_name || "v0.0.4";
+          const tag = data.tag_name || "v0.0.5";
           const badge = document.getElementById("hero-badge");
           if (badge) {
             badge.textContent = `✦ 最新正式版 ${tag} · Tauri v2 + React 19 + shadcn/ui + Rust`;

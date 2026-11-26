@@ -151,7 +151,7 @@ export function ProxyPage({ proxyConfig, onProxyChange }: ProxyPageProps) {
       {/* Top Bar */}
       <header className="flex h-13 shrink-0 items-center justify-between gap-3 border-b border-border bg-card px-5">
         <div className="flex items-center gap-2.5">
-          <h2 className="text-base font-semibold tracking-tight">局域网加速</h2>
+          <h2 className="text-base font-semibold tracking-tight">局域网下载加速</h2>
           {isEnabled ? (
             <Badge variant="success">
               已启用 · {proxyConfig?.url?.replace(/^https?:\/\/|^socks5:\/\//, "")}

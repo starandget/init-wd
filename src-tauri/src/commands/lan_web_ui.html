@@ -1,0 +1,1746 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Star Box 文件共享 · __STARBOX_TITLE__</title>
+<style>
+  :root {
+    --bg: #f5f6f8;
+    --bg-elev: rgba(255, 255, 255, 0.86);
+    --card: #ffffff;
+    --border: #e5e7eb;
+    --border-strong: #d1d5db;
+    --text: #111827;
+    --muted: #6b7280;
+    --accent: #2563eb;
+    --accent-hover: #1d4ed8;
+    --accent-soft: rgba(37, 99, 235, 0.1);
+    --hover: #f3f4f6;
+    --danger: #dc2626;
+    --ok: #059669;
+    --shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+    --radius: 12px;
+  }
+  :root[data-theme="dark"] {
+    --bg: #0e1015;
+    --bg-elev: rgba(22, 25, 34, 0.88);
+    --card: #161922;
+    --border: #262b38;
+    --border-strong: #374151;
+    --text: #f3f4f6;
+    --muted: #9ca3af;
+    --accent: #60a5fa;
+    --accent-hover: #3b82f6;
+    --accent-soft: rgba(96, 165, 250, 0.15);
+    --hover: #1f2431;
+    --danger: #f87171;
+    --ok: #34d399;
+    --shadow: 0 14px 36px rgba(0, 0, 0, 0.45);
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Helvetica Neue", sans-serif;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  button, input, select, textarea { font: inherit; color: inherit; }
+
+  /* Sticky glass header */
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    background: var(--bg-elev);
+    border-bottom: 1px solid var(--border);
+  }
+  .topbar-inner {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 10px 16px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    justify-content: space-between;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+  }
+  .brand-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: var(--accent-soft);
+    color: var(--accent);
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .brand-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--ok);
+  }
+  .summary {
+    font-size: 12px;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .top-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .search-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+  .search {
+    width: 220px;
+    height: 34px;
+    padding: 0 28px 0 11px;
+    border-radius: 9px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    font-size: 13px;
+    outline: none;
+    transition: border-color .15s, width .15s;
+  }
+  .search:focus { border-color: var(--accent); }
+  .search-clear {
+    position: absolute;
+    right: 6px;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    padding: 2px 4px;
+    font-size: 13px;
+    display: none;
+  }
+  .search-clear.show { display: block; }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    height: 34px;
+    padding: 0 11px;
+    border-radius: 9px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--text);
+    font-size: 12.5px;
+    font-weight: 500;
+    cursor: pointer;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: background .12s, border-color .12s, color .12s;
+    user-select: none;
+  }
+  .btn:hover { background: var(--hover); border-color: var(--border-strong); }
+  .btn.active { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+  .btn-primary {
+    border-color: transparent;
+    background: var(--accent);
+    color: #fff;
+  }
+  .btn-primary:hover { background: var(--accent-hover); border-color: transparent; color: #fff; }
+  .btn-sm { height: 28px; padding: 0 9px; font-size: 12px; border-radius: 7px; }
+  .pill-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 17px;
+    height: 17px;
+    padding: 0 5px;
+    border-radius: 999px;
+    font-size: 10.5px;
+    font-weight: 600;
+    background: var(--accent);
+    color: #fff;
+  }
+
+  .wrap {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 14px 16px 48px;
+  }
+
+  /* Breadcrumb + toolbar */
+  .nav-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 14px;
+    margin-bottom: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .crumbs-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .crumbs {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 5px;
+    font-size: 13px;
+    min-width: 0;
+  }
+  .crumb {
+    color: var(--accent);
+    text-decoration: none;
+    font-weight: 500;
+    padding: 2px 6px;
+    border-radius: 6px;
+  }
+  .crumb:hover { background: var(--accent-soft); }
+  .crumb-current { color: var(--text); font-weight: 600; padding: 2px 6px; }
+  .sep { color: var(--muted); opacity: 0.55; }
+
+  .controls-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+  }
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+  }
+  .chip {
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    padding: 3px 9px;
+    border-radius: 999px;
+    font-size: 11.5px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all .12s;
+  }
+  .chip:hover { color: var(--text); background: var(--hover); }
+  .chip.active {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+    color: var(--accent);
+  }
+  .sort-wrap {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .sort-select {
+    height: 28px;
+    padding: 0 8px;
+    border-radius: 7px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--text);
+    font-size: 12px;
+    outline: none;
+    cursor: pointer;
+  }
+
+  /* Upload bar */
+  .upload-card {
+    margin-bottom: 12px;
+    padding: 12px 14px;
+    border-radius: var(--radius);
+    border: 1px dashed var(--border-strong);
+    background: var(--card);
+    transition: border-color .15s, background .15s;
+  }
+  .upload-card.dragover {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+  .upload-top {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .upload-title { font-size: 13px; font-weight: 600; }
+  .upload-sub { font-size: 11.5px; color: var(--muted); }
+  .upload-btns { display: flex; flex-wrap: wrap; gap: 8px; }
+  .upload-progress { margin-top: 10px; }
+  .progress-meta {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 5px;
+  }
+  .progress-track {
+    height: 6px;
+    border-radius: 999px;
+    background: var(--hover);
+    overflow: hidden;
+  }
+  .progress-bar {
+    height: 100%;
+    width: 0;
+    background: var(--accent);
+    transition: width .12s;
+  }
+
+  /* List view */
+  .list-card {
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: var(--card);
+    overflow: hidden;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  thead th {
+    text-align: left;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--muted);
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    background: var(--hover);
+    white-space: nowrap;
+  }
+  thead th.sortable { cursor: pointer; user-select: none; }
+  thead th.sortable:hover { color: var(--text); }
+  tbody td {
+    padding: 9px 14px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: var(--hover); }
+  .item-link {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--text);
+    text-decoration: none;
+    min-width: 0;
+    cursor: pointer;
+  }
+  .item-link:hover .fname { color: var(--accent); }
+  .ico {
+    width: 30px;
+    height: 30px;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    background: var(--hover);
+    font-size: 15px;
+    overflow: hidden;
+  }
+  .ico img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .fname {
+    font-weight: 500;
+    word-break: break-word;
+  }
+  .tag {
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 6px;
+    font-size: 11px;
+    color: var(--muted);
+    background: var(--hover);
+    white-space: nowrap;
+  }
+  .col-size, .col-time {
+    color: var(--muted);
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+    font-size: 12px;
+  }
+  .col-act { text-align: right; white-space: nowrap; }
+  .row-acts {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .empty {
+    text-align: center;
+    color: var(--muted);
+    padding: 46px 16px;
+    font-size: 13px;
+  }
+
+  /* Grid / Gallery view */
+  .grid-wrap {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(175px, 1fr));
+    gap: 12px;
+  }
+  .gcard {
+    display: flex;
+    flex-direction: column;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: var(--card);
+    overflow: hidden;
+    transition: transform .12s, border-color .12s, box-shadow .12s;
+  }
+  .gcard:hover {
+    border-color: var(--accent);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow);
+  }
+  .gthumb {
+    position: relative;
+    aspect-ratio: 4 / 3;
+    background: var(--hover);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    cursor: pointer;
+    text-decoration: none;
+  }
+  .gthumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .gthumb-ico { font-size: 38px; }
+  .gbadge {
+    position: absolute;
+    top: 7px;
+    right: 7px;
+    padding: 2px 6px;
+    border-radius: 6px;
+    font-size: 10px;
+    font-weight: 600;
+    background: rgba(15, 23, 42, 0.65);
+    color: #fff;
+    backdrop-filter: blur(6px);
+  }
+  .gbody {
+    padding: 9px 10px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex: 1;
+  }
+  .gname {
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--text);
+    text-decoration: none;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+  .gname:hover { color: var(--accent); }
+  .gmeta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .gacts {
+    display: flex;
+    gap: 5px;
+    margin-top: auto;
+  }
+  .gacts .btn-sm { flex: 1; height: 26px; font-size: 11.5px; padding: 0 6px; }
+
+  /* Global drag overlay */
+  .drop-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 90;
+    background: rgba(37, 99, 235, 0.14);
+    backdrop-filter: blur(4px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    pointer-events: none;
+  }
+  .drop-overlay.show { display: flex; }
+  .drop-box {
+    border: 2px dashed var(--accent);
+    background: var(--card);
+    border-radius: 18px;
+    padding: 36px 48px;
+    text-align: center;
+    box-shadow: var(--shadow);
+  }
+  .drop-box h3 { margin: 0 0 6px; font-size: 16px; }
+  .drop-box p { margin: 0; font-size: 13px; color: var(--muted); }
+
+  /* Preview Modal / Lightbox */
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    background: rgba(10, 12, 18, 0.72);
+    backdrop-filter: blur(6px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+  .modal-backdrop.open { display: flex; }
+  .preview-dialog {
+    width: min(980px, 100%);
+    max-height: 90vh;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    box-shadow: var(--shadow);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .preview-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 11px 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .preview-title-wrap { min-width: 0; }
+  .preview-title {
+    font-size: 13.5px;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .preview-sub { font-size: 11.5px; color: var(--muted); }
+  .preview-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+  .preview-stage {
+    position: relative;
+    flex: 1;
+    min-height: 280px;
+    max-height: calc(90vh - 110px);
+    overflow: auto;
+    background: var(--bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+  .preview-stage img {
+    max-width: 100%;
+    max-height: calc(90vh - 145px);
+    border-radius: 8px;
+    object-fit: contain;
+    cursor: zoom-in;
+    transition: transform .15s;
+  }
+  .preview-stage img.zoomed {
+    max-width: none;
+    max-height: none;
+    cursor: zoom-out;
+  }
+  .preview-stage video {
+    max-width: 100%;
+    max-height: calc(90vh - 145px);
+    border-radius: 8px;
+    background: #000;
+  }
+  .preview-stage iframe {
+    width: 100%;
+    height: calc(90vh - 145px);
+    border: none;
+    border-radius: 8px;
+    background: #fff;
+  }
+  .preview-code {
+    width: 100%;
+    max-height: calc(90vh - 145px);
+    overflow: auto;
+    margin: 0;
+    padding: 14px 16px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 12.5px;
+    line-height: 1.55;
+    white-space: pre-wrap;
+    word-break: break-word;
+    align-self: flex-start;
+  }
+  .preview-audio {
+    width: min(460px, 100%);
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 24px 20px;
+    text-align: center;
+  }
+  .preview-audio audio { width: 100%; margin-top: 14px; }
+  .preview-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 9px 14px;
+    border-top: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  /* Quick Notes Drawer */
+  .drawer-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 55;
+    background: rgba(10, 12, 18, 0.48);
+    display: none;
+    justify-content: flex-end;
+  }
+  .drawer-backdrop.open { display: flex; }
+  .drawer {
+    width: min(420px, 100%);
+    height: 100%;
+    background: var(--card);
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    box-shadow: var(--shadow);
+  }
+  .drawer-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .drawer-head h3 { margin: 0; font-size: 14.5px; }
+  .drawer-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .note-form {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .note-input {
+    width: 100%;
+    min-height: 76px;
+    resize: vertical;
+    padding: 9px 11px;
+    border-radius: 9px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    font-size: 13px;
+    outline: none;
+  }
+  .note-input:focus { border-color: var(--accent); }
+  .note-card {
+    border: 1px solid var(--border);
+    background: var(--bg);
+    border-radius: 10px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .note-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .note-text {
+    font-size: 13px;
+    white-space: pre-wrap;
+    word-break: break-word;
+    margin: 0;
+  }
+  .note-text a { color: var(--accent); text-decoration: underline; }
+
+  /* Toast */
+  .toast {
+    position: fixed;
+    left: 50%;
+    bottom: 22px;
+    transform: translateX(-50%) translateY(16px);
+    z-index: 100;
+    background: #111827;
+    color: #fff;
+    padding: 9px 16px;
+    border-radius: 999px;
+    font-size: 12.5px;
+    font-weight: 500;
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.28);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .18s, transform .18s;
+  }
+  :root[data-theme="dark"] .toast { background: #f3f4f6; color: #111827; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  @media (max-width: 720px) {
+    .col-type, .col-time { display: none; }
+    .search { width: 155px; }
+    .summary { display: none; }
+    .grid-wrap { grid-template-columns: repeat(auto-fill, minmax(145px, 1fr)); gap: 9px; }
+    .preview-actions .hide-sm { display: none; }
+  }
+</style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <span class="brand-pill"><span class="brand-dot"></span>Star Box 文件共享</span>
+        <span class="summary" id="summaryText"></span>
+      </div>
+      <div class="top-actions">
+        <div class="search-wrap">
+          <input id="filterInput" class="search" type="search" placeholder="筛选文件 (快捷键 /)" autocomplete="off" />
+          <button id="filterClear" class="search-clear" type="button" title="清空筛选">✕</button>
+        </div>
+        <button id="notesBtn" class="btn" type="button" title="局域网双向文字快传">
+          <span>💬 快传文本</span>
+          <span id="notesBadge" class="pill-count" hidden>0</span>
+        </button>
+        <button id="viewToggle" class="btn" type="button" title="切换列表 / 网格相册视图">⊞ 网格</button>
+        <button id="themeToggle" class="btn" type="button" title="切换浅色 / 深色主题">🌓</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="wrap">
+    <section class="nav-card">
+      <div class="crumbs-row">
+        <nav class="crumbs" id="crumbs"></nav>
+        <div id="writeActions" class="upload-btns" hidden>
+          <button id="mkdirBtn" class="btn btn-sm" type="button">📁 新建文件夹</button>
+          <label class="btn btn-sm btn-primary">
+            ⬆️ 上传文件
+            <input id="fileInputTop" type="file" multiple hidden />
+          </label>
+        </div>
+      </div>
+      <div class="controls-row">
+        <div class="chips" id="filterChips"></div>
+        <div class="sort-wrap">
+          <span>排序</span>
+          <select id="sortSelect" class="sort-select">
+            <option value="name-asc">名称 A → Z</option>
+            <option value="name-desc">名称 Z → A</option>
+            <option value="size-desc">大小 从大到小</option>
+            <option value="size-asc">大小 从小到大</option>
+            <option value="time-desc">修改时间 最新</option>
+            <option value="time-asc">修改时间 最早</option>
+          </select>
+        </div>
+      </div>
+    </section>
+
+    <section class="upload-card" id="uploadCard" hidden>
+      <div class="upload-top">
+        <div>
+          <div class="upload-title">拖拽文件到页面任意位置、粘贴截图（Ctrl/Cmd+V），或点击选择上传</div>
+          <div class="upload-sub">直传至当前 Mac 共享目录，重名自动编号不覆盖</div>
+        </div>
+        <div class="upload-btns">
+          <label class="btn btn-sm btn-primary">
+            选择文件上传
+            <input id="fileInput" type="file" multiple hidden />
+          </label>
+        </div>
+      </div>
+      <div class="upload-progress" id="uploadProgress" hidden>
+        <div class="progress-meta">
+          <span id="uploadLabel">准备上传...</span>
+          <span id="uploadSpeed">0%</span>
+        </div>
+        <div class="progress-track"><div class="progress-bar" id="uploadBar"></div></div>
+      </div>
+    </section>
+
+    <main id="contentRoot"></main>
+  </div>
+
+  <!-- Global Drop Overlay -->
+  <div class="drop-overlay" id="dropOverlay">
+    <div class="drop-box">
+      <h3>松开鼠标即可上传到当前目录</h3>
+      <p>支持一次拖入多个文件</p>
+    </div>
+  </div>
+
+  <!-- Inline Preview Modal -->
+  <div class="modal-backdrop" id="previewModal" role="dialog" aria-modal="true">
+    <div class="preview-dialog">
+      <div class="preview-head">
+        <div class="preview-title-wrap">
+          <div class="preview-title" id="previewTitle"></div>
+          <div class="preview-sub" id="previewSub"></div>
+        </div>
+        <div class="preview-actions">
+          <button id="previewCopyCode" class="btn btn-sm" type="button" hidden>复制内容</button>
+          <button id="previewCopyLink" class="btn btn-sm hide-sm" type="button">复制直链</button>
+          <a id="previewOpenRaw" class="btn btn-sm hide-sm" target="_blank" rel="noreferrer">新窗口</a>
+          <a id="previewDownload" class="btn btn-sm btn-primary">下载</a>
+          <button id="previewClose" class="btn btn-sm" type="button" title="关闭 (Esc)">✕</button>
+        </div>
+      </div>
+      <div class="preview-stage" id="previewStage"></div>
+      <div class="preview-foot">
+        <button id="previewPrev" class="btn btn-sm" type="button">← 上一项</button>
+        <span id="previewCounter"></span>
+        <button id="previewNext" class="btn btn-sm" type="button">下一项 →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Notes Drawer -->
+  <div class="drawer-backdrop" id="notesDrawer">
+    <aside class="drawer">
+      <div class="drawer-head">
+        <h3>💬 局域网文字快传</h3>
+        <div style="display:flex;gap:6px;">
+          <button id="notesRefresh" class="btn btn-sm" type="button">刷新</button>
+          <button id="notesClose" class="btn btn-sm" type="button">✕</button>
+        </div>
+      </div>
+      <form class="note-form" id="noteForm">
+        <textarea id="noteInput" class="note-input" placeholder="输入文字、链接、验证码或代码片段，发给 Mac 和同局域网设备（Ctrl/Cmd + Enter 发送）"></textarea>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+          <span style="font-size:11px;color:var(--muted);">纯内存暂存，仅同局域网可见</span>
+          <button class="btn btn-sm btn-primary" type="submit">发送文本</button>
+        </div>
+      </form>
+      <div class="drawer-body" id="notesList"></div>
+    </aside>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const DATA = __STARBOX_DATA_JSON__;
+
+    const ICONS = {
+      dir: "📁",
+      img: "🖼️",
+      vid: "🎬",
+      aud: "🎵",
+      doc: "📄",
+      arc: "📦",
+      code: "💻",
+      file: "📎",
+    };
+    const KIND_LABELS = {
+      all: "全部",
+      dir: "文件夹",
+      img: "图片",
+      vid: "视频",
+      aud: "音频",
+      doc: "文档",
+      arc: "压缩/包",
+      code: "代码",
+      file: "其他",
+    };
+
+    const state = {
+      query: "",
+      kind: "all",
+      sort: localStorage.getItem("starbox_lan_sort") || "name-asc",
+      view: localStorage.getItem("starbox_lan_view") || "list",
+      theme: localStorage.getItem("starbox_lan_theme") || "auto",
+      previewList: [],
+      previewIndex: -1,
+      previewCodeText: null,
+      notesOpen: false,
+    };
+
+    const $ = (id) => document.getElementById(id);
+
+    // Toast notification
+    let toastTimer = null;
+    function showToast(msg) {
+      const el = $("toast");
+      el.textContent = msg;
+      el.classList.add("show");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => el.classList.remove("show"), 2000);
+    }
+
+    // Reliable copy for both HTTPS/localhost and plain HTTP LAN IPs (iOS/Android)
+    async function copyText(text, okMsg = "已复制到剪贴板") {
+      try {
+        if (navigator.clipboard && window.isSecureContext) {
+          await navigator.clipboard.writeText(text);
+          showToast(okMsg);
+          return true;
+        }
+      } catch (_) {}
+      try {
+        const ta = document.createElement("textarea");
+        ta.value = text;
+        ta.setAttribute("readonly", "");
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        ta.setSelectionRange(0, text.length);
+        const ok = document.execCommand("copy");
+        document.body.removeChild(ta);
+        if (ok) {
+          showToast(okMsg);
+          return true;
+        }
+      } catch (_) {}
+      showToast("复制失败，请长按手动选择复制");
+      return false;
+    }
+
+    function absFileUrl(href) {
+      return new URL(href, window.location.href).href;
+    }
+
+    function formatBytes(bytes) {
+      const units = ["B", "KB", "MB", "GB", "TB"];
+      if (bytes < 1024) return bytes + " B";
+      let v = bytes, idx = 0;
+      while (v >= 1024 && idx < units.length - 1) { v /= 1024; idx++; }
+      return (v >= 100 ? v.toFixed(0) : v.toFixed(1)) + " " + units[idx];
+    }
+
+    // Theme management
+    function applyTheme() {
+      const prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+      const effective = state.theme === "auto" ? (prefersDark ? "dark" : "light") : state.theme;
+      document.documentElement.setAttribute("data-theme", effective);
+      const labelMap = { auto: "🌓 自动", light: "☀️ 浅色", dark: "🌙 深色" };
+      $("themeToggle").textContent = labelMap[state.theme] || "🌓";
+    }
+    $("themeToggle").addEventListener("click", () => {
+      const order = ["auto", "light", "dark"];
+      state.theme = order[(order.indexOf(state.theme) + 1) % order.length];
+      localStorage.setItem("starbox_lan_theme", state.theme);
+      applyTheme();
+    });
+    if (window.matchMedia) {
+      window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyTheme);
+    }
+    applyTheme();
+
+    // Summary & breadcrumbs
+    function renderHeader() {
+      const dirs = DATA.entries.filter((e) => e.is_dir).length;
+      const files = DATA.entries.length - dirs;
+      const totalBytes = DATA.entries.reduce((acc, e) => acc + (e.is_dir ? 0 : e.size), 0);
+      $("summaryText").textContent =
+        `${dirs} 个文件夹 · ${files} 个文件` + (totalBytes > 0 ? ` · 共 ${formatBytes(totalBytes)}` : "");
+
+      const crumbs = $("crumbs");
+      crumbs.innerHTML = "";
+      const trimmed = DATA.path.replace(/^\/+|\/+$/g, "");
+      const segs = trimmed ? trimmed.split("/") : [];
+
+      const rootEl = document.createElement(segs.length ? "a" : "span");
+      rootEl.className = segs.length ? "crumb" : "crumb-current";
+      rootEl.textContent = "🏠 根目录";
+      if (segs.length) rootEl.href = "/";
+      crumbs.appendChild(rootEl);
+
+      let acc = "";
+      segs.forEach((seg, idx) => {
+        const sep = document.createElement("span");
+        sep.className = "sep";
+        sep.textContent = "/";
+        crumbs.appendChild(sep);
+
+        acc += "/" + encodeURIComponent(seg);
+        const isLast = idx === segs.length - 1;
+        const el = document.createElement(isLast ? "span" : "a");
+        el.className = isLast ? "crumb-current" : "crumb";
+        el.textContent = seg;
+        if (!isLast) el.href = acc + "/";
+        crumbs.appendChild(el);
+      });
+
+      if (DATA.allow_upload) {
+        $("writeActions").hidden = false;
+        $("uploadCard").hidden = false;
+      }
+
+      if (DATA.note_count > 0) {
+        $("notesBadge").hidden = false;
+        $("notesBadge").textContent = String(DATA.note_count);
+      }
+    }
+
+    // Category filter chips
+    function renderChips() {
+      const counts = { all: DATA.entries.length };
+      for (const e of DATA.entries) {
+        counts[e.kind] = (counts[e.kind] || 0) + 1;
+      }
+      const order = ["all", "dir", "img", "vid", "aud", "doc", "code", "arc", "file"];
+      const container = $("filterChips");
+      container.innerHTML = "";
+      for (const k of order) {
+        if (k !== "all" && !counts[k]) continue;
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "chip" + (state.kind === k ? " active" : "");
+        btn.textContent = `${KIND_LABELS[k]} (${counts[k] || 0})`;
+        btn.addEventListener("click", () => {
+          state.kind = k;
+          renderChips();
+          renderItems();
+        });
+        container.appendChild(btn);
+      }
+    }
+
+    function getFilteredSortedEntries() {
+      const q = state.query.trim().toLowerCase();
+      const filtered = DATA.entries.filter((item) => {
+        if (state.kind !== "all" && item.kind !== state.kind) return false;
+        if (q && !item.name.toLowerCase().includes(q)) return false;
+        return true;
+      });
+      const [field, dir] = state.sort.split("-");
+      const mul = dir === "desc" ? -1 : 1;
+      filtered.sort((a, b) => {
+        if (a.is_dir !== b.is_dir) return a.is_dir ? -1 : 1;
+        if (field === "size") {
+          return (a.size - b.size) * mul || a.name.localeCompare(b.name, "zh-CN");
+        }
+        if (field === "time") {
+          return (a.modified_ms - b.modified_ms) * mul || a.name.localeCompare(b.name, "zh-CN");
+        }
+        return a.name.localeCompare(b.name, "zh-CN", { numeric: true, sensitivity: "base" }) * mul;
+      });
+      return filtered;
+    }
+
+    function handleItemClick(item, e) {
+      if (item.is_dir) return; // normal link navigation
+      if (item.preview) {
+        e.preventDefault();
+        openPreview(item);
+      }
+    }
+
+    function renderItems() {
+      const root = $("contentRoot");
+      root.innerHTML = "";
+      const items = getFilteredSortedEntries();
+      const hasParent = DATA.path !== "/";
+
+      $("viewToggle").textContent = state.view === "grid" ? "☰ 列表" : "⊞ 网格";
+      $("viewToggle").classList.toggle("active", state.view === "grid");
+
+      if (state.view === "grid") {
+        const grid = document.createElement("div");
+        grid.className = "grid-wrap";
+
+        if (hasParent && !state.query && state.kind === "all") {
+          const card = document.createElement("div");
+          card.className = "gcard";
+          const thumb = document.createElement("a");
+          thumb.className = "gthumb";
+          thumb.href = "../";
+          thumb.innerHTML = '<span class="gthumb-ico">⬆️</span>';
+          const body = document.createElement("div");
+          body.className = "gbody";
+          const name = document.createElement("a");
+          name.className = "gname";
+          name.href = "../";
+          name.textContent = "返回上一级 (..)";
+          body.appendChild(name);
+          card.append(thumb, body);
+          grid.appendChild(card);
+        }
+
+        if (items.length === 0) {
+          const emptyCard = document.createElement("div");
+          emptyCard.className = "list-card empty";
+          emptyCard.textContent = DATA.entries.length === 0 ? "当前目录为空" : "没有匹配的文件";
+          root.appendChild(emptyCard);
+          return;
+        }
+
+        for (const item of items) {
+          const card = document.createElement("div");
+          card.className = "gcard";
+
+          const thumb = document.createElement("a");
+          thumb.className = "gthumb";
+          thumb.href = item.href;
+          thumb.addEventListener("click", (e) => handleItemClick(item, e));
+
+          if (item.preview === "image") {
+            const img = document.createElement("img");
+            img.loading = "lazy";
+            img.decoding = "async";
+            img.src = item.href;
+            img.alt = item.name;
+            thumb.appendChild(img);
+          } else {
+            const sp = document.createElement("span");
+            sp.className = "gthumb-ico";
+            sp.textContent = ICONS[item.kind] || "📎";
+            thumb.appendChild(sp);
+          }
+
+          const badge = document.createElement("span");
+          badge.className = "gbadge";
+          badge.textContent = item.type_label;
+          thumb.appendChild(badge);
+
+          const body = document.createElement("div");
+          body.className = "gbody";
+
+          const nameLink = document.createElement("a");
+          nameLink.className = "gname";
+          nameLink.href = item.href;
+          nameLink.title = item.name;
+          nameLink.textContent = item.name;
+          nameLink.addEventListener("click", (e) => handleItemClick(item, e));
+
+          const meta = document.createElement("div");
+          meta.className = "gmeta";
+          const sz = document.createElement("span");
+          sz.textContent = item.size_text;
+          const tm = document.createElement("span");
+          tm.textContent = item.modified_text.slice(5);
+          meta.append(sz, tm);
+
+          const acts = document.createElement("div");
+          acts.className = "gacts";
+          if (item.is_dir) {
+            const openBtn = document.createElement("a");
+            openBtn.className = "btn btn-sm";
+            openBtn.href = item.href;
+            openBtn.textContent = "打开";
+            acts.appendChild(openBtn);
+          } else {
+            const cpBtn = document.createElement("button");
+            cpBtn.type = "button";
+            cpBtn.className = "btn btn-sm";
+            cpBtn.textContent = "直链";
+            cpBtn.addEventListener("click", () => copyText(absFileUrl(item.href), "已复制文件直链"));
+
+            const dlBtn = document.createElement("a");
+            dlBtn.className = "btn btn-sm";
+            dlBtn.href = item.href + "?download=1";
+            dlBtn.textContent = "下载";
+            acts.append(cpBtn, dlBtn);
+          }
+
+          body.append(nameLink, meta, acts);
+          card.append(thumb, body);
+          grid.appendChild(card);
+        }
+        root.appendChild(grid);
+        return;
+      }
+
+      // List view
+      const card = document.createElement("div");
+      card.className = "list-card";
+      const table = document.createElement("table");
+      table.innerHTML = `
+        <thead>
+          <tr>
+            <th class="sortable" data-col="name">名称</th>
+            <th class="col-type">类型</th>
+            <th class="col-size sortable" data-col="size">大小</th>
+            <th class="col-time sortable" data-col="time">修改时间</th>
+            <th class="col-act">操作</th>
+          </tr>
+        </thead>
+      `;
+      table.querySelectorAll("th.sortable").forEach((th) => {
+        th.addEventListener("click", () => {
+          const col = th.getAttribute("data-col");
+          const [curField, curDir] = state.sort.split("-");
+          const nextDir = curField === col && curDir === "asc" ? "desc" : "asc";
+          state.sort = `${col}-${nextDir}`;
+          localStorage.setItem("starbox_lan_sort", state.sort);
+          $("sortSelect").value = state.sort;
+          renderItems();
+        });
+      });
+
+      const tbody = document.createElement("tbody");
+
+      if (hasParent && !state.query && state.kind === "all") {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td><a class="item-link" href="../"><span class="ico">⬆️</span><span class="fname">返回上一级 (..)</span></a></td>
+          <td class="col-type"><span class="tag">上级</span></td>
+          <td class="col-size">—</td>
+          <td class="col-time">—</td>
+          <td class="col-act"></td>
+        `;
+        tbody.appendChild(tr);
+      }
+
+      if (items.length === 0) {
+        const tr = document.createElement("tr");
+        const td = document.createElement("td");
+        td.colSpan = 5;
+        td.className = "empty";
+        td.textContent = DATA.entries.length === 0 ? "当前目录为空" : "没有匹配的文件";
+        tr.appendChild(td);
+        tbody.appendChild(tr);
+      } else {
+        for (const item of items) {
+          const tr = document.createElement("tr");
+
+          const tdName = document.createElement("td");
+          const link = document.createElement("a");
+          link.className = "item-link";
+          link.href = item.href;
+          link.addEventListener("click", (e) => handleItemClick(item, e));
+
+          const ico = document.createElement("span");
+          ico.className = "ico";
+          if (item.preview === "image") {
+            const img = document.createElement("img");
+            img.loading = "lazy";
+            img.src = item.href;
+            img.alt = "";
+            ico.appendChild(img);
+          } else {
+            ico.textContent = ICONS[item.kind] || "📎";
+          }
+
+          const fname = document.createElement("span");
+          fname.className = "fname";
+          fname.textContent = item.name;
+          link.append(ico, fname);
+          tdName.appendChild(link);
+
+          const tdType = document.createElement("td");
+          tdType.className = "col-type";
+          const tag = document.createElement("span");
+          tag.className = "tag";
+          tag.textContent = item.type_label;
+          tdType.appendChild(tag);
+
+          const tdSize = document.createElement("td");
+          tdSize.className = "col-size";
+          tdSize.textContent = item.size_text;
+
+          const tdTime = document.createElement("td");
+          tdTime.className = "col-time";
+          tdTime.textContent = item.modified_text;
+
+          const tdAct = document.createElement("td");
+          tdAct.className = "col-act";
+          const actWrap = document.createElement("div");
+          actWrap.className = "row-acts";
+
+          if (item.is_dir) {
+            const openBtn = document.createElement("a");
+            openBtn.className = "btn btn-sm";
+            openBtn.href = item.href;
+            openBtn.textContent = "打开";
+            actWrap.appendChild(openBtn);
+          } else {
+            if (item.preview) {
+              const pvBtn = document.createElement("button");
+              pvBtn.type = "button";
+              pvBtn.className = "btn btn-sm";
+              pvBtn.textContent = "预览";
+              pvBtn.addEventListener("click", () => openPreview(item));
+              actWrap.appendChild(pvBtn);
+            }
+            const cpBtn = document.createElement("button");
+            cpBtn.type = "button";
+            cpBtn.className = "btn btn-sm";
+            cpBtn.title = "复制局域网直链";
+            cpBtn.textContent = "直链";
+            cpBtn.addEventListener("click", () => copyText(absFileUrl(item.href), "已复制文件直链"));
+
+            const dlBtn = document.createElement("a");
+            dlBtn.className = "btn btn-sm";
+            dlBtn.href = item.href + "?download=1";
+            dlBtn.textContent = "下载";
+
+            actWrap.append(cpBtn, dlBtn);
+          }
+          tdAct.appendChild(actWrap);
+
+          tr.append(tdName, tdType, tdSize, tdTime, tdAct);
+          tbody.appendChild(tr);
+        }
+      }
+
+      table.appendChild(tbody);
+      card.appendChild(table);
+      root.appendChild(card);
+    }
+
+    // Inline Preview Modal / Lightbox
+    function openPreview(item) {
+      const list = getFilteredSortedEntries().filter((x) => !x.is_dir && x.preview);
+      const idx = list.findIndex((x) => x.href === item.href);
+      state.previewList = list;
+      state.previewIndex = idx >= 0 ? idx : 0;
+      $("previewModal").classList.add("open");
+      document.body.style.overflow = "hidden";
+      renderPreview();
+    }
+
+    function closePreview() {
+      $("previewModal").classList.remove("open");
+      $("previewStage").innerHTML = "";
+      state.previewIndex = -1;
+      state.previewCodeText = null;
+      document.body.style.overflow = "";
+    }
+
+    async function renderPreview() {
+      const item = state.previewList[state.previewIndex];
+      if (!item) return;
+
+      $("previewTitle").textContent = item.name;
+      $("previewSub").textContent = `${item.type_label} · ${item.size_text} · ${item.modified_text}`;
+      $("previewOpenRaw").href = item.href;
+      $("previewDownload").href = item.href + "?download=1";
+      $("previewCopyLink").onclick = () => copyText(absFileUrl(item.href), "已复制文件直链");
+      $("previewCopyCode").hidden = true;
+      state.previewCodeText = null;
+
+      const total = state.previewList.length;
+      $("previewCounter").textContent = `${state.previewIndex + 1} / ${total}`;
+      $("previewPrev").disabled = total <= 1;
+      $("previewNext").disabled = total <= 1;
+
+      const stage = $("previewStage");
+      stage.innerHTML = "";
+
+      if (item.preview === "image") {
+        const img = document.createElement("img");
+        img.src = item.href;
+        img.alt = item.name;
+        img.addEventListener("click", () => img.classList.toggle("zoomed"));
+        stage.appendChild(img);
+      } else if (item.preview === "video") {
+        const vid = document.createElement("video");
+        vid.controls = true;
+        vid.autoplay = true;
+        vid.playsInline = true;
+        vid.src = item.href;
+        stage.appendChild(vid);
+      } else if (item.preview === "audio") {
+        const box = document.createElement("div");
+        box.className = "preview-audio";
+        const icon = document.createElement("div");
+        icon.style.fontSize = "44px";
+        icon.textContent = "🎵";
+        const name = document.createElement("div");
+        name.style.fontWeight = "600";
+        name.style.marginTop = "8px";
+        name.style.wordBreak = "break-all";
+        name.textContent = item.name;
+        const audio = document.createElement("audio");
+        audio.controls = true;
+        audio.autoplay = true;
+        audio.src = item.href;
+        box.append(icon, name, audio);
+        stage.appendChild(box);
+      } else if (item.preview === "pdf") {
+        const frame = document.createElement("iframe");
+        frame.src = item.href;
+        frame.title = item.name;
+        stage.appendChild(frame);
+      } else if (item.preview === "text") {
+        const pre = document.createElement("pre");
+        pre.className = "preview-code";
+        pre.textContent = "加载中...";
+        stage.appendChild(pre);
+        try {
+          const maxBytes = 512 * 1024;
+          const headers = item.size > maxBytes ? { Range: `bytes=0-${maxBytes - 1}` } : {};
+          const res = await fetch(item.href, { headers });
+          const text = await res.text();
+          if (state.previewList[state.previewIndex]?.href !== item.href) return;
+          const suffix = item.size > maxBytes ? "\n\n--- 文件较大，仅预览前 512 KB，请下载查看完整内容 ---" : "";
+          pre.textContent = text + suffix;
+          state.previewCodeText = text;
+          $("previewCopyCode").hidden = false;
+          $("previewCopyCode").onclick = () => copyText(text, "已复制文本内容");
+        } catch (err) {
+          pre.textContent = "加载失败: " + err.message;
+        }
+      }
+    }
+
+    function stepPreview(delta) {
+      const total = state.previewList.length;
+      if (total <= 1) return;
+      state.previewIndex = (state.previewIndex + delta + total) % total;
+      renderPreview();
+    }
+
+    $("previewClose").addEventListener("click", closePreview);
+    $("previewPrev").addEventListener("click", () => stepPreview(-1));
+    $("previewNext").addEventListener("click", () => stepPreview(1));
+    $("previewModal").addEventListener("click", (e) => {
+      if (e.target === $("previewModal")) closePreview();
+    });
+
+    // Keyboard shortcuts
+    document.addEventListener("keydown", (e) => {
+      if ($("previewModal").classList.contains("open")) {
+        if (e.key === "Escape") closePreview();
+        else if (e.key === "ArrowLeft") stepPreview(-1);
+        else if (e.key === "ArrowRight") stepPreview(1);
+        return;
+      }
+      if ($("notesDrawer").classList.contains("open")) {
+        if (e.key === "Escape") closeNotes();
+        return;
+      }
+      if (e.key === "/" && document.activeElement.tagName !== "INPUT" && document.activeElement.tagName !== "TEXTAREA") {
+        e.preventDefault();
+        $("filterInput").focus();
+      }
+    });
+
+    // Search & View & Sort controls
+    $("filterInput").addEventListener("input", () => {
+      state.query = $("filterInput").value;
+      $("filterClear").classList.toggle("show", Boolean(state.query));
+      renderItems();
+    });
+    $("filterClear").addEventListener("click", () => {
+      $("filterInput").value = "";
+      state.query = "";
+      $("filterClear").classList.remove("show");
+      renderItems();
+    });
+    $("sortSelect").value = state.sort;
+    $("sortSelect").addEventListener("change", () => {
+      state.sort = $("sortSelect").value;
+      localStorage.setItem("starbox_lan_sort", state.sort);
+      renderItems();
+    });
+    $("viewToggle").addEventListener("click", () => {
+      state.view = state.view === "grid" ? "list" : "grid";
+      localStorage.setItem("starbox_lan_view", state.view);
+      renderItems();
+    });
+
+    // Quick Notes (LAN two-way clipboard)
+    function renderNoteTextWithLinks(container, text) {
+      const urlRe = /(https?:\/\/[^\s<>"']+)/g;
+      let last = 0;
+      let m;
+      while ((m = urlRe.exec(text)) !== null) {
+        if (m.index > last) {
+          container.appendChild(document.createTextNode(text.slice(last, m.index)));
+        }
+        const a = document.createElement("a");
+        a.href = m[0];
+        a.target = "_blank";
+        a.rel = "noreferrer";
+        a.textContent = m[0];
+        container.appendChild(a);
+        last = m.index + m[0].length;
+      }
+      if (last < text.length) {
+        container.appendChild(document.createTextNode(text.slice(last)));
+      }
+    }
+
+    async function fetchNotes() {
+      try {
+        const res = await fetch("/__starbox_notes");
+        if (!res.ok) return;
+        const json = await res.json();
+        const notes = json.notes || [];
+        $("notesBadge").hidden = notes.length === 0;
+        $("notesBadge").textContent = String(notes.length);
+
+        const list = $("notesList");
+        list.innerHTML = "";
+        if (notes.length === 0) {
+          const empty = document.createElement("div");
+          empty.className = "empty";
+          empty.textContent = "暂无快传文本，在上方输入内容即可与 Mac 双向互传";
+          list.appendChild(empty);
+          return;
+        }
+        for (const n of notes) {
+          const card = document.createElement("div");
+          card.className = "note-card";
+          const meta = document.createElement("div");
+          meta.className = "note-meta";
+          const info = document.createElement("span");
+          info.textContent = `${n.sender} · ${n.time}`;
+          const cp = document.createElement("button");
+          cp.type = "button";
+          cp.className = "btn btn-sm";
+          cp.textContent = "复制";
+          cp.addEventListener("click", () => copyText(n.text, "已复制文本"));
+          meta.append(info, cp);
+
+          const p = document.createElement("p");
+          p.className = "note-text";
+          renderNoteTextWithLinks(p, n.text);
+
+          card.append(meta, p);
+          list.appendChild(card);
+        }
+      } catch (_) {}
+    }
+
+    let notesPollTimer = null;
+    function openNotes() {
+      state.notesOpen = true;
+      $("notesDrawer").classList.add("open");
+      fetchNotes();
+      clearInterval(notesPollTimer);
+      notesPollTimer = setInterval(fetchNotes, 4000);
+    }
+    function closeNotes() {
+      state.notesOpen = false;
+      $("notesDrawer").classList.remove("open");
+      clearInterval(notesPollTimer);
+    }
+
+    $("notesBtn").addEventListener("click", openNotes);
+    $("notesClose").addEventListener("click", closeNotes);
+    $("notesRefresh").addEventListener("click", fetchNotes);
+    $("notesDrawer").addEventListener("click", (e) => {
+      if (e.target === $("notesDrawer")) closeNotes();
+    });
+
+    async function submitNote() {
+      const text = $("noteInput").value.trim();
+      if (!text) return;
+      try {
+        const res = await fetch("/__starbox_notes", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text }),
+        });
+        if (!res.ok) {
+          const err = await res.text();
+          showToast("发送失败: " + err);
+          return;
+        }
+        $("noteInput").value = "";
+        showToast("已发送到局域网快传");
+        await fetchNotes();
+      } catch (err) {
+        showToast("发送失败: " + err.message);
+      }
+    }
+
+    $("noteForm").addEventListener("submit", (e) => {
+      e.preventDefault();
+      submitNote();
+    });
+    $("noteInput").addEventListener("keydown", (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+        e.preventDefault();
+        submitNote();
+      }
+    });
+
+    // Upload & Mkdir (when allow_upload is true)
+    if (DATA.allow_upload) {
+      const prog = $("uploadProgress");
+      const label = $("uploadLabel");
+      const speedEl = $("uploadSpeed");
+      const bar = $("uploadBar");
+
+      async function uploadFiles(fileList) {
+        const files = Array.from(fileList || []);
+        if (!files.length) return;
+        prog.hidden = false;
+        let okCount = 0;
+
+        for (let i = 0; i < files.length; i++) {
+          const f = files[i];
+          const startTs = performance.now();
+          label.textContent = `正在上传 (${i + 1}/${files.length}): ${f.name}`;
+          speedEl.textContent = "0%";
+          bar.style.width = "0%";
+
+          try {
+            await new Promise((resolve, reject) => {
+              const xhr = new XMLHttpRequest();
+              const url =
+                "/__starbox_upload?dir=" +
+                encodeURIComponent(DATA.path) +
+                "&name=" +
+                encodeURIComponent(f.name);
+              xhr.open("POST", url);
+              xhr.upload.onprogress = (e) => {
+                if (e.lengthComputable && e.total > 0) {
+                  const p = Math.round((e.loaded / e.total) * 100);
+                  const elapsed = Math.max(0.1, (performance.now() - startTs) / 1000);
+                  const speed = formatBytes(e.loaded / elapsed) + "/s";
+                  speedEl.textContent = `${p}% · ${speed}`;
+                  bar.style.width = p + "%";
+                }
+              };
+              xhr.onload = () => {
+                if (xhr.status >= 200 && xhr.status < 300) resolve();
+                else reject(new Error(xhr.responseText || "HTTP " + xhr.status));
+              };
+              xhr.onerror = () => reject(new Error("网络连接中断"));
+              xhr.send(f);
+            });
+            okCount++;
+          } catch (err) {
+            showToast(`上传 ${f.name} 失败: ${err.message}`);
+          }
+        }
+
+        if (okCount > 0) {
+          label.textContent = `已上传 ${okCount} 个文件，正在刷新...`;
+          speedEl.textContent = "100%";
+          bar.style.width = "100%";
+          setTimeout(() => location.reload(), 320);
+        }
+      }
+
+      $("fileInput").addEventListener("change", (e) => uploadFiles(e.target.files));
+      $("fileInputTop").addEventListener("change", (e) => uploadFiles(e.target.files));
+
+      // Global drag & drop upload
+      let dragDepth = 0;
+      const overlay = $("dropOverlay");
+      window.addEventListener("dragenter", (e) => {
+        if (!e.dataTransfer || !Array.from(e.dataTransfer.types).includes("Files")) return;
+        e.preventDefault();
+        dragDepth++;
+        overlay.classList.add("show");
+      });
+      window.addEventListener("dragover", (e) => {
+        if (!e.dataTransfer || !Array.from(e.dataTransfer.types).includes("Files")) return;
+        e.preventDefault();
+      });
+      window.addEventListener("dragleave", () => {
+        dragDepth = Math.max(0, dragDepth - 1);
+        if (dragDepth === 0) overlay.classList.remove("show");
+      });
+      window.addEventListener("drop", (e) => {
+        e.preventDefault();
+        dragDepth = 0;
+        overlay.classList.remove("show");
+        if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) {
+          uploadFiles(e.dataTransfer.files);
+        }
+      });
+
+      // Paste screenshot / file from clipboard
+      window.addEventListener("paste", (e) => {
+        if (document.activeElement.tagName === "INPUT" || document.activeElement.tagName === "TEXTAREA") return;
+        const items = e.clipboardData && e.clipboardData.files;
+        if (items && items.length > 0) {
+          e.preventDefault();
+          const normalized = Array.from(items).map((file) => {
+            if (file.name && file.name !== "image.png") return file;
+            const ext = (file.type.split("/")[1] || "png").replace(/[^a-z0-9]/gi, "");
+            const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+            return new File([file], `paste-${stamp}.${ext}`, { type: file.type });
+          });
+          uploadFiles(normalized);
+        }
+      });
+
+      // Create new folder
+      $("mkdirBtn").addEventListener("click", async () => {
+        const raw = prompt("请输入新文件夹名称：");
+        if (!raw || !raw.trim()) return;
+        try {
+          const url =
+            "/__starbox_mkdir?dir=" +
+            encodeURIComponent(DATA.path) +
+            "&name=" +
+            encodeURIComponent(raw.trim());
+          const res = await fetch(url, { method: "POST" });
+          const json = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            showToast(json.error || "创建文件夹失败");
+            return;
+          }
+          showToast(`已创建文件夹 ${raw.trim()}`);
+          setTimeout(() => location.reload(), 250);
+        } catch (err) {
+          showToast("创建失败: " + err.message);
+        }
+      });
+    }
+
+    // Initial render
+    renderHeader();
+    renderChips();
+    renderItems();
+  </script>
+</body>
+</html>

@@ -227,6 +227,13 @@ export interface LanServerLogEntry {
   detail: string | null;
 }
 
+export interface LanNoteItem {
+  id: number;
+  time: string;
+  sender: string;
+  text: string;
+}
+
 export interface LanServerStatus {
   running: boolean;
   root_dir: string | null;
@@ -239,4 +246,5 @@ export interface LanServerStatus {
   started_at: string | null;
   request_count: number;
   recent_logs: LanServerLogEntry[];
+  notes: LanNoteItem[];
 }

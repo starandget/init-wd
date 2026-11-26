@@ -210,6 +210,8 @@ pub fn run() {
             lan_server::stop_lan_server,
             lan_server::update_lan_server_config,
             lan_server::clear_lan_server_logs,
+            lan_server::add_lan_note,
+            lan_server::clear_lan_notes,
             lan_server::open_folder_in_finder,
             tweaks::get_mac_tweaks,
             tweaks::set_mac_tweak,

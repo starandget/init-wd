@@ -24,15 +24,15 @@ interface StatusBarProps {
 
 const TAB_LABELS: Record<NavTab, string> = {
   env: "本机环境",
-  proxy: "局域网加速",
-  lan_server: "局域网服务",
+  proxy: "下载加速",
+  lan_server: "文件共享",
   starter: "新机启航",
-  discover: "浏览软件",
-  apps: "我的软件",
+  discover: "发现应用",
+  apps: "已装应用",
   dock: "Dock 整理",
-  tweaks: "快捷设置",
+  tweaks: "快捷调优",
   theme: "主题",
-  settings: "设置",
+  settings: "偏好设置",
   queue: "任务队列",
 };
 
@@ -167,7 +167,7 @@ export function StatusBar({
         )}
 
         <span className="font-mono text-[10.5px] opacity-80">
-          v{updateInfo?.current_version || "0.0.4"}
+          v{updateInfo?.current_version || "0.0.5"}
         </span>
       </div>
     </footer>

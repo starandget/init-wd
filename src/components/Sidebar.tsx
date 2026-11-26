@@ -59,34 +59,38 @@ interface NavGroupConfig {
 const NAV_GROUPS: NavGroupConfig[] = [
   {
     id: "env",
-    label: "环境与网络",
+    label: "装机准备",
+    items: [{ id: "env", label: "本机环境", icon: Cpu }],
+  },
+  {
+    id: "lan",
+    label: "局域网",
     items: [
-      { id: "env", label: "本机环境", icon: Cpu },
-      { id: "proxy", label: "局域网加速", icon: Wifi },
-      { id: "lan_server", label: "局域网服务", icon: Server },
+      { id: "proxy", label: "下载加速", icon: Wifi },
+      { id: "lan_server", label: "文件共享", icon: Server },
     ],
   },
   {
     id: "apps",
-    label: "软件管理",
+    label: "软件中心",
     items: [
       { id: "starter", label: "新机启航", icon: Rocket },
-      { id: "discover", label: "浏览软件", icon: Compass },
-      { id: "apps", label: "我的软件", icon: Package },
+      { id: "discover", label: "发现应用", icon: Compass },
+      { id: "apps", label: "已装应用", icon: Package },
       { id: "queue", label: "任务队列", icon: Download },
     ],
   },
   {
     id: "tools",
-    label: "桌面整理",
+    label: "桌面",
     items: [{ id: "dock", label: "Dock 整理", icon: LayoutGrid }],
   },
   {
     id: "system",
     label: "系统",
     items: [
-      { id: "tweaks", label: "快捷设置", icon: SlidersHorizontal },
-      { id: "settings", label: "设置", icon: Settings },
+      { id: "tweaks", label: "快捷调优", icon: SlidersHorizontal },
+      { id: "settings", label: "偏好设置", icon: Settings },
     ],
   },
 ];
@@ -196,8 +200,8 @@ export function Sidebar({
             {(
               [
                 ["light", "浅色", Sun],
-                ["warm", "暖白", BookOpen],
                 ["dark", "深色", Moon],
+                ["warm", "暖白", BookOpen],
               ] as const
             ).map(([mode, label, Icon]) => {
               const active = theme === mode;

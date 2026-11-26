@@ -177,7 +177,7 @@ export function QuickTweaksPage() {
     <div className="flex h-full flex-col">
       {/* Top Bar with Centered Category Switcher (matches SettingsPage) */}
       <header className="relative flex h-13 shrink-0 items-center justify-between border-b border-border bg-card px-5">
-        <h2 className="text-base font-semibold tracking-tight">快捷设置</h2>
+        <h2 className="text-base font-semibold tracking-tight">快捷调优</h2>
 
         <div className="absolute left-1/2 -translate-x-1/2 inline-flex items-center rounded-lg border border-border bg-muted/60 p-0.5">
           {(

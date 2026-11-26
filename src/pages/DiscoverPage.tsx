@@ -232,7 +232,7 @@ export function DiscoverPage({
       {/* Clean single top bar: Title | Centered Source Switcher | Search */}
       <header className="grid h-13 shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-4 border-b border-border bg-card/80 px-5 backdrop-blur-md">
         <h2 className="shrink-0 justify-self-start text-base font-semibold tracking-tight">
-          浏览软件
+          发现应用
         </h2>
 
         <div className="flex shrink-0 items-center justify-self-center">

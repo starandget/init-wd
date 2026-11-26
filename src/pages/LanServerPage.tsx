@@ -9,9 +9,11 @@ import {
   FolderOpen,
   Globe,
   Info,
+  MessageSquareText,
   Play,
   QrCode,
   RefreshCw,
+  Send,
   Server,
   Square,
   Trash2,
@@ -49,6 +51,9 @@ export function LanServerPage({ status, onStatusChange }: LanServerPageProps) {
 
   const [busy, setBusy] = useState(false);
   const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
+  const [copiedNoteId, setCopiedNoteId] = useState<number | null>(null);
+  const [noteDraft, setNoteDraft] = useState("");
+  const [sendingNote, setSendingNote] = useState(false);
   const [selectedQrUrl, setSelectedQrUrl] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<{
     type: "success" | "destructive" | "info";
@@ -228,14 +233,51 @@ export function LanServerPage({ status, onStatusChange }: LanServerPageProps) {
     }
   };
 
+  const handleSendNote = async () => {
+    const text = noteDraft.trim();
+    if (!text) return;
+    setSendingNote(true);
+    try {
+      const next = await api.addLanNote(text);
+      onStatusChange(next);
+      setNoteDraft("");
+    } catch (e) {
+      setFeedback({ type: "destructive", text: `发送文本失败: ${String(e)}` });
+    } finally {
+      setSendingNote(false);
+    }
+  };
+
+  const handleCopyNote = async (id: number, text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedNoteId(id);
+      window.setTimeout(() => {
+        setCopiedNoteId((prev) => (prev === id ? null : prev));
+      }, 1600);
+    } catch {
+      setFeedback({ type: "info", text: "复制失败，请手动选中复制" });
+    }
+  };
+
+  const handleClearNotes = async () => {
+    try {
+      const next = await api.clearLanNotes();
+      onStatusChange(next);
+    } catch (e) {
+      setFeedback({ type: "destructive", text: `清空快传失败: ${String(e)}` });
+    }
+  };
+
   const logs = status?.recent_logs || [];
+  const notes = status?.notes || [];
 
   return (
     <div className="flex h-full flex-col">
       {/* Top Bar */}
       <header className="flex h-13 shrink-0 items-center justify-between gap-3 border-b border-border bg-card px-5">
         <div className="flex items-center gap-2.5">
-          <h2 className="text-base font-semibold tracking-tight">局域网服务器</h2>
+          <h2 className="text-base font-semibold tracking-tight">局域网文件共享</h2>
           {isRunning ? (
             <Badge variant="success">运行中 · :{status?.port}</Badge>
           ) : (
@@ -591,7 +633,113 @@ export function LanServerPage({ status, onStatusChange }: LanServerPageProps) {
             </CardContent>
           </Card>
 
-          {/* 3. 实时访问日志 */}
+          {/* 3. 局域网文字快传 */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <MessageSquareText className="h-4 w-4 text-primary" />
+                  <CardTitle className="text-sm">局域网文字快传</CardTitle>
+                  {notes.length > 0 && (
+                    <Badge variant="outline" className="tabular-nums">
+                      {notes.length} 条
+                    </Badge>
+                  )}
+                </div>
+                {notes.length > 0 && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 px-2 text-xs text-muted-foreground"
+                    onClick={handleClearNotes}
+                  >
+                    <Trash2 className="h-3 w-3" />
+                    清空
+                  </Button>
+                )}
+              </div>
+              <CardDescription>
+                与手机、平板或 Windows 浏览器双向实时互传文本、链接与验证码（纯内存暂存，不写磁盘）。
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={noteDraft}
+                  onChange={(e) => setNoteDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSendNote();
+                    }
+                  }}
+                  placeholder="输入文字或链接按回车发送，局域网设备打开网页右上角「快传文本」即可一键复制"
+                  className="h-9 min-w-0 flex-1 rounded-md border border-input bg-background px-3 text-xs outline-none focus:border-primary"
+                />
+                <Button
+                  size="sm"
+                  className="h-9 px-3.5 text-xs"
+                  disabled={sendingNote || !noteDraft.trim()}
+                  onClick={handleSendNote}
+                >
+                  {sendingNote ? (
+                    <Spinner className="h-3.5 w-3.5" />
+                  ) : (
+                    <Send className="h-3.5 w-3.5" />
+                  )}
+                  发送
+                </Button>
+              </div>
+
+              {notes.length > 0 ? (
+                <div className="max-h-52 space-y-2 overflow-y-auto pr-0.5">
+                  {notes.map((n) => (
+                    <div
+                      key={n.id}
+                      className="flex items-start justify-between gap-3 rounded-lg border border-border bg-muted/25 px-3 py-2"
+                    >
+                      <div className="min-w-0 flex-1 space-y-0.5">
+                        <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                          <span className="font-medium text-foreground/80">
+                            {n.sender}
+                          </span>
+                          <span className="tabular-nums">{n.time}</span>
+                        </div>
+                        <div className="whitespace-pre-wrap break-all text-xs text-foreground">
+                          {n.text}
+                        </div>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 shrink-0 px-2.5 text-xs"
+                        onClick={() => handleCopyNote(n.id, n.text)}
+                      >
+                        {copiedNoteId === n.id ? (
+                          <>
+                            <Check className="h-3 w-3 text-emerald-500" />
+                            已复制
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="h-3 w-3" />
+                            复制
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-lg border border-dashed border-border py-5 text-center text-xs text-muted-foreground">
+                  暂无快传记录，可在上方输入发送，或在手机网页点击「快传文本」发回本机
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* 4. 实时访问日志 */}
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between gap-2">

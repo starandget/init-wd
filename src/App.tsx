@@ -24,6 +24,7 @@ import type {
   InstalledInfo,
   InstallProgressEvent,
   InstallTask,
+  LanNoteItem,
   LanServerLogEntry,
   LanServerStatus,
   LocalAppCandidate,
@@ -48,9 +49,7 @@ export default function App() {
     } catch {
       // ignore
     }
-    return window.matchMedia?.("(prefers-color-scheme: dark)").matches
-      ? "dark"
-      : "light";
+    return "light";
   });
 
   const [env, setEnv] = useState<EnvStatus | null>(null);
@@ -232,10 +231,23 @@ export default function App() {
       });
     });
 
+    const unlistenLanNote = listen<LanNoteItem>("lan-server-note", (event) => {
+      const note = event.payload;
+      setLanServerStatus((prev) => {
+        if (!prev) return prev;
+        if (prev.notes.some((n) => n.id === note.id)) return prev;
+        return {
+          ...prev,
+          notes: [note, ...prev.notes].slice(0, 50),
+        };
+      });
+    });
+
     return () => {
       unlistenProgress.then((fn) => fn());
       unlistenEnv.then((fn) => fn());
       unlistenLanLog.then((fn) => fn());
+      unlistenLanNote.then((fn) => fn());
     };
   }, [refreshEnv]);
 

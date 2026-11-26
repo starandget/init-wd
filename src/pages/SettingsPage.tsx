@@ -90,22 +90,6 @@ const THEMES: {
     },
   },
   {
-    id: "warm",
-    name: "暖白",
-    subtitle: "护眼纸张风",
-    desc: "低蓝光羊皮纸底色配陶土橘主色调，长时间阅读与整理软件更护眼。",
-    icon: BookOpen,
-    preview: {
-      bg: "#faf9f5",
-      sidebar: "#f5f4ed",
-      card: "#fffefa",
-      border: "#e5e2d7",
-      primary: "#d97757",
-      text: "#141413",
-      muted: "#ddd9cc",
-    },
-  },
-  {
     id: "dark",
     name: "深色",
     subtitle: "夜间专注模式",
@@ -119,6 +103,22 @@ const THEMES: {
       primary: "#3b82f6",
       text: "#f4f4f5",
       muted: "#32323d",
+    },
+  },
+  {
+    id: "warm",
+    name: "暖白",
+    subtitle: "护眼纸张风",
+    desc: "低蓝光羊皮纸底色配陶土橘主色调，长时间阅读与整理软件更护眼。",
+    icon: BookOpen,
+    preview: {
+      bg: "#faf9f5",
+      sidebar: "#f5f4ed",
+      card: "#fffefa",
+      border: "#e5e2d7",
+      primary: "#d97757",
+      text: "#141413",
+      muted: "#ddd9cc",
     },
   },
 ];
@@ -246,7 +246,7 @@ export function SettingsPage({
     <div className="flex h-full flex-col">
       {/* Top Bar with Centered Category Switcher */}
       <header className="relative flex h-13 shrink-0 items-center justify-between border-b border-border bg-card px-5">
-        <h2 className="text-base font-semibold tracking-tight">设置</h2>
+        <h2 className="text-base font-semibold tracking-tight">偏好设置</h2>
 
         <div className="absolute left-1/2 -translate-x-1/2 inline-flex items-center rounded-lg border border-border bg-muted/60 p-0.5">
           {(
@@ -356,7 +356,7 @@ export function SettingsPage({
                     <div className="flex items-center gap-2 text-sm font-medium">
                       <span>Star Box 当前版本</span>
                       <Badge variant="secondary" className="font-mono">
-                        v{updateInfo?.current_version || "0.0.4"}
+                        v{updateInfo?.current_version || "0.0.5"}
                       </Badge>
                       {updateInfo?.has_update && (
                         <Badge variant="info">

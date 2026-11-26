@@ -17,8 +17,11 @@ use tokio::task::JoinHandle;
 const DEFAULT_PORT: u16 = 8080;
 const MAX_HEADER_BYTES: usize = 32 * 1024;
 const MAX_UPLOAD_BYTES: u64 = 10 * 1024 * 1024 * 1024; // 10 GiB safety cap
+const MAX_NOTE_BODY_BYTES: usize = 64 * 1024; // 64 KiB max per quick-transfer note
 const MAX_RECENT_LOGS: usize = 120;
+const MAX_NOTES: usize = 50;
 const STREAM_CHUNK_SIZE: usize = 64 * 1024;
+const WEB_UI_TEMPLATE: &str = include_str!("lan_web_ui.html");
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LanServerConfig {
@@ -53,6 +56,14 @@ pub struct LanServerLogEntry {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LanNoteItem {
+    pub id: u64,
+    pub time: String,
+    pub sender: String,
+    pub text: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LanServerStatus {
     pub running: bool,
     pub root_dir: Option<String>,
@@ -65,6 +76,7 @@ pub struct LanServerStatus {
     pub started_at: Option<String>,
     pub request_count: u64,
     pub recent_logs: Vec<LanServerLogEntry>,
+    pub notes: Vec<LanNoteItem>,
 }
 
 struct ServerRuntime {
@@ -76,6 +88,8 @@ struct ServerRuntime {
     request_count: u64,
     log_seq: u64,
     recent_logs: VecDeque<LanServerLogEntry>,
+    note_seq: u64,
+    notes: VecDeque<LanNoteItem>,
     shutdown_tx: Option<watch::Sender<bool>>,
     accept_handle: Option<JoinHandle<()>>,
 }
@@ -91,6 +105,8 @@ impl ServerRuntime {
             request_count: 0,
             log_seq: 0,
             recent_logs: VecDeque::with_capacity(MAX_RECENT_LOGS),
+            note_seq: 0,
+            notes: VecDeque::with_capacity(MAX_NOTES),
             shutdown_tx: None,
             accept_handle: None,
         }
@@ -109,6 +125,7 @@ impl ServerRuntime {
             started_at: self.started_at.clone(),
             request_count: self.request_count,
             recent_logs: self.recent_logs.iter().cloned().collect(),
+            notes: self.notes.iter().cloned().collect(),
         }
     }
 }
@@ -385,6 +402,53 @@ pub async fn clear_lan_server_logs() -> Result<LanServerStatus, String> {
     Ok(snapshot)
 }
 
+fn push_note_internal(app: &AppHandle, sender: &str, text: String) -> Result<LanNoteItem, String> {
+    let trimmed = text.trim();
+    if trimmed.is_empty() {
+        return Err("发送内容不能为空".to_string());
+    }
+    if trimmed.len() > MAX_NOTE_BODY_BYTES {
+        return Err("文本长度超过 64 KB 上限".to_string());
+    }
+    let item = {
+        let mut guard = runtime_state().write().map_err(|e| e.to_string())?;
+        guard.note_seq = guard.note_seq.saturating_add(1);
+        let item = LanNoteItem {
+            id: guard.note_seq,
+            time: Local::now().format("%H:%M:%S").to_string(),
+            sender: sender.to_string(),
+            text: trimmed.to_string(),
+        };
+        guard.notes.push_front(item.clone());
+        while guard.notes.len() > MAX_NOTES {
+            guard.notes.pop_back();
+        }
+        item
+    };
+    let _ = app.emit("lan-server-note", &item);
+    Ok(item)
+}
+
+#[tauri::command]
+pub async fn add_lan_note(app: AppHandle, text: String) -> Result<LanServerStatus, String> {
+    push_note_internal(&app, "本机 Mac", text)?;
+    let snapshot = runtime_state()
+        .read()
+        .map_err(|e| e.to_string())?
+        .snapshot();
+    Ok(snapshot)
+}
+
+#[tauri::command]
+pub async fn clear_lan_notes() -> Result<LanServerStatus, String> {
+    let snapshot = {
+        let mut guard = runtime_state().write().map_err(|e| e.to_string())?;
+        guard.notes.clear();
+        guard.snapshot()
+    };
+    Ok(snapshot)
+}
+
 #[tauri::command]
 pub async fn open_folder_in_finder(path: String) -> Result<(), String> {
     let trimmed = path.trim();
@@ -544,6 +608,38 @@ async fn handle_connection(
         )
         .await;
         return;
+    }
+
+    // Handle mkdir endpoint
+    if req.method == "POST" && decoded_path == "/__starbox_mkdir" {
+        handle_mkdir(
+            &mut stream,
+            &req,
+            &canonical_root,
+            show_hidden,
+            allow_upload,
+            &client_ip,
+            &app,
+        )
+        .await;
+        return;
+    }
+
+    // Handle LAN quick-transfer notes endpoint
+    if decoded_path == "/__starbox_notes" {
+        if req.method == "GET" {
+            let notes = runtime_state()
+                .read()
+                .map(|g| g.notes.iter().cloned().collect::<Vec<_>>())
+                .unwrap_or_default();
+            let body = serde_json::json!({ "ok": true, "notes": notes }).to_string();
+            let _ = write_json_response(&mut stream, 200, &body).await;
+            return;
+        }
+        if req.method == "POST" {
+            handle_post_note(&mut stream, &req, &client_ip, &app).await;
+            return;
+        }
     }
 
     if req.method != "GET" && req.method != "HEAD" {
@@ -805,6 +901,142 @@ async fn handle_upload(
     let _ = write_json_response(stream, 200, &body).await;
 }
 
+async fn handle_mkdir(
+    stream: &mut TcpStream,
+    req: &HttpRequestHead,
+    canonical_root: &Path,
+    show_hidden: bool,
+    allow_upload: bool,
+    client_ip: &str,
+    app: &AppHandle,
+) {
+    if !allow_upload {
+        let _ = write_json_response(stream, 403, r#"{"ok":false,"error":"当前服务器为只读模式，未开启写入"}"#).await;
+        record_log(app, client_ip, "MKDIR", "/__starbox_mkdir", 403, Some("只读拒绝".to_string()));
+        return;
+    }
+
+    let dir_param = req.query.get("dir").cloned().unwrap_or_else(|| "/".to_string());
+    let name = req.query.get("name").cloned().unwrap_or_default().trim().to_string();
+    if name.is_empty()
+        || name == "."
+        || name == ".."
+        || name.contains('/')
+        || name.contains('\\')
+        || name.contains('\0')
+        || (!show_hidden && name.starts_with('.'))
+    {
+        let _ = write_json_response(stream, 400, r#"{"ok":false,"error":"文件夹名称不合法"}"#).await;
+        return;
+    }
+
+    let target_dir = match resolve_safe_path(canonical_root, &dir_param, show_hidden).await {
+        Ok(p) if p.is_dir() => p,
+        Ok(_) => {
+            let _ = write_json_response(stream, 400, r#"{"ok":false,"error":"目标路径不是目录"}"#).await;
+            return;
+        }
+        Err(status) => {
+            let _ = write_json_response(stream, status, r#"{"ok":false,"error":"目标目录不可访问"}"#).await;
+            return;
+        }
+    };
+
+    let new_dir = target_dir.join(&name);
+    if new_dir.exists() {
+        let _ = write_json_response(stream, 409, r#"{"ok":false,"error":"同名文件夹或文件已存在"}"#).await;
+        return;
+    }
+
+    match fs::create_dir(&new_dir).await {
+        Ok(_) => {
+            let display_path = if dir_param.ends_with('/') {
+                format!("{dir_param}{name}/")
+            } else {
+                format!("{dir_param}/{name}/")
+            };
+            record_log(app, client_ip, "MKDIR", &display_path, 200, Some("新建目录".to_string()));
+            let body = serde_json::json!({ "ok": true, "name": name }).to_string();
+            let _ = write_json_response(stream, 200, &body).await;
+        }
+        Err(e) => {
+            let body = serde_json::json!({ "ok": false, "error": format!("创建目录失败: {e}") }).to_string();
+            let _ = write_json_response(stream, 500, &body).await;
+        }
+    }
+}
+
+#[derive(Deserialize)]
+struct PostNotePayload {
+    text: String,
+}
+
+async fn handle_post_note(
+    stream: &mut TcpStream,
+    req: &HttpRequestHead,
+    client_ip: &str,
+    app: &AppHandle,
+) {
+    let content_length: usize = match req
+        .headers
+        .get("content-length")
+        .and_then(|v| v.parse::<usize>().ok())
+    {
+        Some(n) if n <= MAX_NOTE_BODY_BYTES => n,
+        Some(_) => {
+            let _ = write_json_response(stream, 413, r#"{"ok":false,"error":"文本内容超过 64 KB 上限"}"#).await;
+            return;
+        }
+        None => {
+            let _ = write_json_response(stream, 411, r#"{"ok":false,"error":"缺少 Content-Length"}"#).await;
+            return;
+        }
+    };
+
+    let mut body_bytes = Vec::with_capacity(content_length);
+    let initial = req.leftover.len().min(content_length);
+    body_bytes.extend_from_slice(&req.leftover[..initial]);
+
+    let mut buf = [0u8; 4096];
+    while body_bytes.len() < content_length {
+        let to_read = (content_length - body_bytes.len()).min(buf.len());
+        match tokio::time::timeout(Duration::from_secs(10), stream.read(&mut buf[..to_read])).await {
+            Ok(Ok(0)) | Ok(Err(_)) | Err(_) => {
+                let _ = write_json_response(stream, 400, r#"{"ok":false,"error":"读取请求内容失败"}"#).await;
+                return;
+            }
+            Ok(Ok(n)) => body_bytes.extend_from_slice(&buf[..n]),
+        }
+    }
+
+    let payload: PostNotePayload = match serde_json::from_slice(&body_bytes) {
+        Ok(p) => p,
+        Err(_) => {
+            let _ = write_json_response(stream, 400, r#"{"ok":false,"error":"JSON 格式错误"}"#).await;
+            return;
+        }
+    };
+
+    match push_note_internal(app, client_ip, payload.text) {
+        Ok(note) => {
+            record_log(
+                app,
+                client_ip,
+                "NOTE",
+                "/__starbox_notes",
+                200,
+                Some(format!("{} 字符", note.text.chars().count())),
+            );
+            let body = serde_json::json!({ "ok": true, "note": note }).to_string();
+            let _ = write_json_response(stream, 200, &body).await;
+        }
+        Err(msg) => {
+            let body = serde_json::json!({ "ok": false, "error": msg }).to_string();
+            let _ = write_json_response(stream, 400, &body).await;
+        }
+    }
+}
+
 fn choose_non_colliding_path(dir: &Path, filename: &str) -> PathBuf {
     let candidate = dir.join(filename);
     if !candidate.exists() {
@@ -977,6 +1209,7 @@ fn status_reason(code: u16) -> &'static str {
         404 => "Not Found",
         405 => "Method Not Allowed",
         408 => "Request Timeout",
+        409 => "Conflict",
         411 => "Length Required",
         413 => "Payload Too Large",
         416 => "Range Not Satisfiable",
@@ -1215,11 +1448,56 @@ fn file_badge_kind(name: &str, is_dir: bool) -> (&'static str, &'static str) {
     }
 }
 
-struct DirEntryItem {
+fn preview_kind(name: &str, is_dir: bool) -> Option<&'static str> {
+    if is_dir {
+        return None;
+    }
+    let ext = Path::new(name)
+        .extension()
+        .and_then(|s| s.to_str())
+        .unwrap_or("")
+        .to_ascii_lowercase();
+    match ext.as_str() {
+        "png" | "jpg" | "jpeg" | "gif" | "webp" | "svg" | "avif" | "bmp" | "ico" => Some("image"),
+        "mp4" | "m4v" | "webm" | "mov" => Some("video"),
+        "mp3" | "wav" | "m4a" | "ogg" | "flac" | "aac" => Some("audio"),
+        "pdf" => Some("pdf"),
+        "txt" | "log" | "md" | "markdown" | "csv" | "json" | "xml" | "yaml" | "yml" | "toml"
+        | "ini" | "conf" | "html" | "htm" | "css" | "js" | "mjs" | "ts" | "tsx" | "jsx" | "rs"
+        | "py" | "go" | "java" | "c" | "cpp" | "h" | "sh" | "zsh" | "swift" | "sql" | "env" => {
+            Some("text")
+        }
+        _ => None,
+    }
+}
+
+fn escape_json_for_script(json: &str) -> String {
+    json.replace("</", "<\\/")
+        .replace('\u{2028}', "\\u2028")
+        .replace('\u{2029}', "\\u2029")
+}
+
+#[derive(Serialize)]
+struct WebDirEntry {
     name: String,
+    href: String,
     is_dir: bool,
+    kind: &'static str,
+    type_label: &'static str,
     size: u64,
-    modified: Option<SystemTime>,
+    size_text: String,
+    modified_ms: i64,
+    modified_text: String,
+    preview: Option<&'static str>,
+}
+
+#[derive(Serialize)]
+struct DirectoryPageData {
+    path: String,
+    allow_upload: bool,
+    show_hidden: bool,
+    note_count: usize,
+    entries: Vec<WebDirEntry>,
 }
 
 async fn render_directory_html(
@@ -1241,11 +1519,37 @@ async fn render_directory_html(
         let Ok(meta) = ent.metadata().await else {
             continue;
         };
-        entries.push(DirEntryItem {
+        let is_dir = meta.is_dir();
+        let size = if is_dir { 0 } else { meta.len() };
+        let modified = meta.modified().ok();
+        let modified_ms = modified
+            .and_then(|t| t.duration_since(SystemTime::UNIX_EPOCH).ok())
+            .map(|d| d.as_millis() as i64)
+            .unwrap_or(0);
+        let encoded = percent_encode_component(&name);
+        let href = if is_dir {
+            format!("{encoded}/")
+        } else {
+            encoded
+        };
+        let (kind, type_label) = file_badge_kind(&name, is_dir);
+        let preview = preview_kind(&name, is_dir);
+
+        entries.push(WebDirEntry {
             name,
-            is_dir: meta.is_dir(),
-            size: if meta.is_dir() { 0 } else { meta.len() },
-            modified: meta.modified().ok(),
+            href,
+            is_dir,
+            kind,
+            type_label,
+            size,
+            size_text: if is_dir {
+                "—".to_string()
+            } else {
+                format_bytes(size)
+            },
+            modified_ms,
+            modified_text: format_modified(modified),
+            preview,
         });
     }
 
@@ -1255,484 +1559,26 @@ async fn render_directory_html(
             .then_with(|| a.name.to_lowercase().cmp(&b.name.to_lowercase()))
     });
 
-    let folder_count = entries.iter().filter(|e| e.is_dir).count();
-    let file_count = entries.len() - folder_count;
-    let total_file_bytes: u64 = entries.iter().filter(|e| !e.is_dir).map(|e| e.size).sum();
+    let note_count = runtime_state()
+        .read()
+        .map(|g| g.notes.len())
+        .unwrap_or(0);
 
-    // Build breadcrumbs
-    let mut crumbs_html = String::from(r#"<a href="/" class="crumb">根目录</a>"#);
-    let trimmed = url_path.trim_matches('/');
-    let mut acc = String::new();
-    if !trimmed.is_empty() {
-        for seg in trimmed.split('/') {
-            if seg.is_empty() {
-                continue;
-            }
-            acc.push('/');
-            acc.push_str(&percent_encode_component(seg));
-            crumbs_html.push_str(r#"<span class="sep">/</span>"#);
-            crumbs_html.push_str(&format!(
-                r#"<a href="{acc}/" class="crumb">{}</a>"#,
-                html_escape(seg)
-            ));
-        }
-    }
-
-    // Build rows
-    let mut rows_html = String::new();
-    if !trimmed.is_empty() {
-        rows_html.push_str(
-            r#"<tr class="row" data-name="..">
-                <td class="col-name"><a class="item-link" href="../"><span class="ico ico-dir">↑</span><span class="fname">返回上一级 (..)</span></a></td>
-                <td class="col-type"><span class="tag">上级</span></td>
-                <td class="col-size">—</td>
-                <td class="col-time">—</td>
-                <td class="col-act"></td>
-            </tr>"#,
-        );
-    }
-
-    for item in &entries {
-        let encoded = percent_encode_component(&item.name);
-        let href = if item.is_dir {
-            format!("{encoded}/")
-        } else {
-            encoded.clone()
-        };
-        let (kind, label) = file_badge_kind(&item.name, item.is_dir);
-        let icon_glyph = match kind {
-            "dir" => "📁",
-            "img" => "🖼️",
-            "vid" => "🎬",
-            "aud" => "🎵",
-            "doc" => "📄",
-            "arc" => "📦",
-            "code" => "💻",
-            _ => "📎",
-        };
-        let escaped_name = html_escape(&item.name);
-        let size_str = if item.is_dir {
-            "—".to_string()
-        } else {
-            format_bytes(item.size)
-        };
-        let time_str = format_modified(item.modified);
-        let action_html = if item.is_dir {
-            format!(r#"<a class="act-btn" href="{href}">打开</a>"#)
-        } else {
-            format!(r#"<a class="act-btn" href="{href}?download=1">下载</a>"#)
-        };
-
-        rows_html.push_str(&format!(
-            r#"<tr class="row" data-name="{}">
-                <td class="col-name"><a class="item-link" href="{href}"><span class="ico ico-{kind}">{icon_glyph}</span><span class="fname">{escaped_name}</span></a></td>
-                <td class="col-type"><span class="tag">{label}</span></td>
-                <td class="col-size">{size_str}</td>
-                <td class="col-time">{time_str}</td>
-                <td class="col-act">{action_html}</td>
-            </tr>"#,
-            html_escape(&item.name.to_lowercase())
-        ));
-    }
-
-    if entries.is_empty() {
-        rows_html.push_str(
-            r#"<tr><td colspan="5" class="empty">当前目录为空</td></tr>"#,
-        );
-    }
-
-    let upload_section = if allow_upload {
-        r#"<section class="upload-box" id="uploadBox">
-                <div class="upload-top">
-                    <div>
-                        <div class="upload-title">上传文件到此目录</div>
-                        <div class="upload-sub">支持拖拽或多个文件选择，直接传输到 Mac 共享目录</div>
-                    </div>
-                    <label class="btn-primary">
-                        选择文件上传
-                        <input id="fileInput" type="file" multiple hidden />
-                    </label>
-                </div>
-                <div class="upload-progress" id="uploadProgress" hidden>
-                    <div class="progress-meta">
-                        <span id="uploadLabel">准备上传...</span>
-                        <span id="uploadPct">0%</span>
-                    </div>
-                    <div class="progress-track"><div class="progress-bar" id="uploadBar"></div></div>
-                </div>
-            </section>"#
-            .to_string()
-    } else {
-        String::new()
+    let data = DirectoryPageData {
+        path: url_path.to_string(),
+        allow_upload,
+        show_hidden,
+        note_count,
+        entries,
     };
 
-    let upload_script = if allow_upload {
-        let dir_json = serde_json::to_string(url_path).unwrap_or_else(|_| "\"/\"".to_string());
-        format!(
-            r#"
-            (function() {{
-                const currentDir = {dir_json};
-                const box = document.getElementById('uploadBox');
-                const input = document.getElementById('fileInput');
-                const prog = document.getElementById('uploadProgress');
-                const label = document.getElementById('uploadLabel');
-                const pct = document.getElementById('uploadPct');
-                const bar = document.getElementById('uploadBar');
-
-                async function uploadFiles(fileList) {{
-                    const files = Array.from(fileList || []);
-                    if (!files.length) return;
-                    prog.hidden = false;
-                    for (let i = 0; i < files.length; i++) {{
-                        const f = files[i];
-                        label.textContent = `正在上传 (${{i + 1}}/${{files.length}}): ${{f.name}}`;
-                        pct.textContent = '0%';
-                        bar.style.width = '0%';
-                        await new Promise((resolve, reject) => {{
-                            const xhr = new XMLHttpRequest();
-                            const url = '/__starbox_upload?dir=' + encodeURIComponent(currentDir) + '&name=' + encodeURIComponent(f.name);
-                            xhr.open('POST', url);
-                            xhr.upload.onprogress = (e) => {{
-                                if (e.lengthComputable && e.total > 0) {{
-                                    const p = Math.round((e.loaded / e.total) * 100);
-                                    pct.textContent = p + '%';
-                                    bar.style.width = p + '%';
-                                }}
-                            }};
-                            xhr.onload = () => {{
-                                if (xhr.status >= 200 && xhr.status < 300) resolve();
-                                else reject(new Error(xhr.responseText || ('HTTP ' + xhr.status)));
-                            }};
-                            xhr.onerror = () => reject(new Error('网络连接中断'));
-                            xhr.send(f);
-                        }}).catch(err => {{
-                            alert('上传失败: ' + err.message);
-                        }});
-                    }}
-                    label.textContent = '上传完成，正在刷新...';
-                    pct.textContent = '100%';
-                    bar.style.width = '100%';
-                    setTimeout(() => location.reload(), 300);
-                }}
-
-                input.addEventListener('change', (e) => uploadFiles(e.target.files));
-                ['dragenter', 'dragover'].forEach(ev => box.addEventListener(ev, e => {{
-                    e.preventDefault();
-                    box.classList.add('dragover');
-                }}));
-                ['dragleave', 'drop'].forEach(ev => box.addEventListener(ev, e => {{
-                    e.preventDefault();
-                    box.classList.remove('dragover');
-                }}));
-                box.addEventListener('drop', (e) => uploadFiles(e.dataTransfer.files));
-            }})();
-            "#
-        )
-    } else {
-        String::new()
-    };
-
+    let raw_json = serde_json::to_string(&data).map_err(|e| e.to_string())?;
+    let safe_json = escape_json_for_script(&raw_json);
     let title_path = html_escape(url_path);
-    let summary = format!(
-        "{folder_count} 个文件夹 · {file_count} 个文件{}",
-        if total_file_bytes > 0 {
-            format!(" · 共 {}", format_bytes(total_file_bytes))
-        } else {
-            String::new()
-        }
-    );
 
-    Ok(format!(
-        r#"<!doctype html>
-<html lang="zh-CN">
-<head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Star Box 局域网共享 · {title_path}</title>
-<style>
-  :root {{
-    --bg: #f6f7f9;
-    --card: #ffffff;
-    --border: #e5e7eb;
-    --text: #111827;
-    --muted: #6b7280;
-    --accent: #2563eb;
-    --accent-soft: rgba(37, 99, 235, 0.1);
-    --hover: #f3f4f6;
-  }}
-  @media (prefers-color-scheme: dark) {{
-    :root {{
-      --bg: #0f1115;
-      --card: #171a21;
-      --border: #262b36;
-      --text: #f3f4f6;
-      --muted: #9ca3af;
-      --accent: #60a5fa;
-      --accent-soft: rgba(96, 165, 250, 0.14);
-      --hover: #1f2430;
-    }}
-  }}
-  * {{ box-sizing: border-box; }}
-  body {{
-    margin: 0;
-    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Helvetica Neue", sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    line-height: 1.5;
-  }}
-  .wrap {{
-    max-width: 980px;
-    margin: 0 auto;
-    padding: 20px 16px 40px;
-  }}
-  .header {{
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 14px;
-  }}
-  .brand {{
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }}
-  .badge {{
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 4px 10px;
-    border-radius: 999px;
-    font-size: 12px;
-    font-weight: 600;
-    background: var(--accent-soft);
-    color: var(--accent);
-  }}
-  .summary {{
-    font-size: 12px;
-    color: var(--muted);
-  }}
-  .search {{
-    width: 240px;
-    max-width: 100%;
-    height: 36px;
-    padding: 0 12px;
-    border-radius: 10px;
-    border: 1px solid var(--border);
-    background: var(--card);
-    color: var(--text);
-    font-size: 13px;
-    outline: none;
-  }}
-  .search:focus {{ border-color: var(--accent); }}
-  .crumbs {{
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 6px;
-    padding: 10px 14px;
-    margin-bottom: 14px;
-    border-radius: 12px;
-    border: 1px solid var(--border);
-    background: var(--card);
-    font-size: 13px;
-  }}
-  .crumb {{
-    color: var(--accent);
-    text-decoration: none;
-    font-weight: 500;
-  }}
-  .crumb:hover {{ text-decoration: underline; }}
-  .sep {{ color: var(--muted); opacity: 0.6; }}
-  .upload-box {{
-    margin-bottom: 14px;
-    padding: 14px 16px;
-    border-radius: 12px;
-    border: 1px dashed var(--border);
-    background: var(--card);
-    transition: border-color .15s, background .15s;
-  }}
-  .upload-box.dragover {{
-    border-color: var(--accent);
-    background: var(--accent-soft);
-  }}
-  .upload-top {{
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-  }}
-  .upload-title {{ font-size: 13px; font-weight: 600; }}
-  .upload-sub {{ font-size: 12px; color: var(--muted); }}
-  .btn-primary {{
-    display: inline-flex;
-    align-items: center;
-    padding: 7px 14px;
-    border-radius: 8px;
-    background: var(--accent);
-    color: #fff;
-    font-size: 12px;
-    font-weight: 600;
-    cursor: pointer;
-    user-select: none;
-  }}
-  .upload-progress {{ margin-top: 10px; }}
-  .progress-meta {{
-    display: flex;
-    justify-content: space-between;
-    font-size: 12px;
-    color: var(--muted);
-    margin-bottom: 4px;
-  }}
-  .progress-track {{
-    height: 6px;
-    border-radius: 999px;
-    background: var(--hover);
-    overflow: hidden;
-  }}
-  .progress-bar {{
-    height: 100%;
-    width: 0;
-    background: var(--accent);
-    transition: width .12s;
-  }}
-  .card {{
-    border-radius: 14px;
-    border: 1px solid var(--border);
-    background: var(--card);
-    overflow: hidden;
-  }}
-  table {{
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 13px;
-  }}
-  thead th {{
-    text-align: left;
-    font-size: 11.5px;
-    font-weight: 600;
-    color: var(--muted);
-    padding: 10px 14px;
-    border-bottom: 1px solid var(--border);
-    background: var(--hover);
-  }}
-  tbody td {{
-    padding: 10px 14px;
-    border-bottom: 1px solid var(--border);
-    vertical-align: middle;
-  }}
-  tbody tr:last-child td {{ border-bottom: none; }}
-  tbody tr:hover {{ background: var(--hover); }}
-  .item-link {{
-    display: flex;
-    align-items: center;
-    gap: 9px;
-    color: var(--text);
-    text-decoration: none;
-    min-width: 0;
-  }}
-  .item-link:hover .fname {{ color: var(--accent); }}
-  .ico {{
-    width: 24px;
-    height: 24px;
-    flex-shrink: 0;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 6px;
-    background: var(--hover);
-    font-size: 14px;
-  }}
-  .fname {{
-    font-weight: 500;
-    word-break: break-all;
-  }}
-  .tag {{
-    display: inline-block;
-    padding: 2px 7px;
-    border-radius: 6px;
-    font-size: 11px;
-    color: var(--muted);
-    background: var(--hover);
-    white-space: nowrap;
-  }}
-  .col-size, .col-time {{
-    color: var(--muted);
-    white-space: nowrap;
-    font-variant-numeric: tabular-nums;
-  }}
-  .col-act {{ text-align: right; white-space: nowrap; }}
-  .act-btn {{
-    display: inline-block;
-    padding: 4px 10px;
-    border-radius: 7px;
-    border: 1px solid var(--border);
-    color: var(--text);
-    text-decoration: none;
-    font-size: 12px;
-    font-weight: 500;
-  }}
-  .act-btn:hover {{
-    border-color: var(--accent);
-    color: var(--accent);
-  }}
-  .empty {{
-    text-align: center;
-    color: var(--muted);
-    padding: 42px 16px;
-  }}
-  @media (max-width: 640px) {{
-    .col-type, .col-time {{ display: none; }}
-    .search {{ width: 100%; }}
-  }}
-</style>
-</head>
-<body>
-  <div class="wrap">
-    <header class="header">
-      <div class="brand">
-        <span class="badge">Star Box 局域网文件服务</span>
-        <span class="summary">{summary}</span>
-      </div>
-      <input id="filterInput" class="search" type="search" placeholder="筛选当前目录文件..." />
-    </header>
-
-    <nav class="crumbs">{crumbs_html}</nav>
-    {upload_section}
-
-    <main class="card">
-      <table>
-        <thead>
-          <tr>
-            <th>名称</th>
-            <th class="col-type">类型</th>
-            <th class="col-size">大小</th>
-            <th class="col-time">修改时间</th>
-            <th class="col-act">操作</th>
-          </tr>
-        </thead>
-        <tbody id="fileRows">
-          {rows_html}
-        </tbody>
-      </table>
-    </main>
-  </div>
-  <script>
-    const filterInput = document.getElementById('filterInput');
-    filterInput.addEventListener('input', () => {{
-      const q = filterInput.value.trim().toLowerCase();
-      document.querySelectorAll('#fileRows tr.row').forEach(tr => {{
-        const name = tr.getAttribute('data-name') || '';
-        tr.style.display = (!q || name === '..' || name.includes(q)) ? '' : 'none';
-      }});
-    }});
-    {upload_script}
-  </script>
-</body>
-</html>"#
-    ))
+    Ok(WEB_UI_TEMPLATE
+        .replace("__STARBOX_TITLE__", &title_path)
+        .replace("__STARBOX_DATA_JSON__", &safe_json))
 }
 
 #[cfg(test)]
@@ -1753,6 +1599,19 @@ mod tests {
         assert_eq!(parse_range_header("bytes=0-5000", 1000), Some((0, 999)));
         assert_eq!(parse_range_header("bytes=1000-1200", 1000), None);
         assert_eq!(parse_range_header("bytes=500-200", 1000), None);
+    }
+
+    #[test]
+    fn test_escape_json_for_script_and_preview_kind() {
+        assert_eq!(
+            escape_json_for_script(r#"{"name":"</script><img/>"}"#),
+            r#"{"name":"<\/script><img/>"}"#
+        );
+        assert_eq!(preview_kind("photo.webp", false), Some("image"));
+        assert_eq!(preview_kind("clip.mp4", false), Some("video"));
+        assert_eq!(preview_kind("README.md", false), Some("text"));
+        assert_eq!(preview_kind("archive.zip", false), None);
+        assert_eq!(preview_kind("photo.png", true), None);
     }
 
     #[tokio::test]
