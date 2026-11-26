@@ -1,10 +1,6 @@
-import { useEffect, useState } from "react";
 import {
   Activity,
-  Check,
   CheckCircle2,
-  Clock,
-  Copy,
   ExternalLink,
   Minus,
   Square,
@@ -17,7 +13,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
 import type { InstallTask } from "@/types";
 
-export type RightPanelId = "activity" | "clock" | null;
+export type RightPanelId = "activity" | null;
 
 interface RightToolRailProps {
   activePanel: RightPanelId;
@@ -29,30 +25,6 @@ interface RightToolRailProps {
   onGoQueue: () => void;
 }
 
-const CLOCK_ZONES = [
-  { id: "shanghai", label: "上海", sub: "UTC+8", tz: "Asia/Shanghai" },
-  { id: "la", label: "洛杉矶", sub: "PT", tz: "America/Los_Angeles" },
-  { id: "utc", label: "协调世界时", sub: "UTC+0", tz: "UTC" },
-  { id: "tokyo", label: "东京", sub: "UTC+9", tz: "Asia/Tokyo" },
-];
-
-function formatClock(date: Date, tz: string) {
-  const time = new Intl.DateTimeFormat("zh-CN", {
-    timeZone: tz,
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: false,
-  }).format(date);
-  const day = new Intl.DateTimeFormat("zh-CN", {
-    timeZone: tz,
-    month: "2-digit",
-    day: "2-digit",
-    weekday: "short",
-  }).format(date);
-  return { time, day };
-}
-
 export function RightToolRail({
   activePanel,
   onChangePanel,
@@ -62,24 +34,8 @@ export function RightToolRail({
   onCancelAllTasks,
   onGoQueue,
 }: RightToolRailProps) {
-  const [now, setNow] = useState(() => new Date());
-  const [copiedId, setCopiedId] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (activePanel !== "clock") return;
-    setNow(new Date());
-    const id = window.setInterval(() => setNow(new Date()), 1000);
-    return () => window.clearInterval(id);
-  }, [activePanel]);
-
   const toggle = (id: Exclude<RightPanelId, null>) => {
     onChangePanel(activePanel === id ? null : id);
-  };
-
-  const handleCopy = (id: string, text: string) => {
-    navigator.clipboard?.writeText(text).catch(() => {});
-    setCopiedId(id);
-    window.setTimeout(() => setCopiedId(null), 1200);
   };
 
   return (
@@ -89,10 +45,10 @@ export function RightToolRail({
         <aside className="flex h-full w-[268px] shrink-0 flex-col border-l border-border bg-card">
           <div className="flex h-10 shrink-0 items-center justify-between border-b border-border px-3">
             <span className="text-xs font-semibold text-foreground">
-              {activePanel === "activity" ? "实时任务" : "世界时钟"}
+              实时任务
             </span>
             <div className="flex items-center gap-1">
-              {activePanel === "activity" && activeTaskCount > 0 && (
+              {activeTaskCount > 0 && (
                 <button
                   type="button"
                   onClick={onCancelAllTasks}
@@ -198,52 +154,6 @@ export function RightToolRail({
               </div>
             </div>
           )}
-
-          {activePanel === "clock" && (
-            <div className="flex-1 space-y-2 overflow-y-auto p-2.5">
-              {CLOCK_ZONES.map((z) => {
-                const { time, day } = formatClock(now, z.tz);
-                const copied = copiedId === z.id;
-                return (
-                  <button
-                    key={z.id}
-                    type="button"
-                    onClick={() =>
-                      handleCopy(z.id, `${z.label} ${day} ${time}`)
-                    }
-                    className="group flex w-full items-center justify-between rounded-lg border border-border/80 bg-muted/30 px-3 py-2.5 text-left transition-colors hover:border-primary/40 hover:bg-muted/60 cursor-pointer"
-                  >
-                    <div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-xs font-semibold text-foreground">
-                          {z.label}
-                        </span>
-                        <span className="rounded bg-muted px-1 py-0.5 font-mono text-[9.5px] text-muted-foreground">
-                          {z.sub}
-                        </span>
-                      </div>
-                      <div className="mt-0.5 text-[10.5px] text-muted-foreground">
-                        {day}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="font-mono text-sm font-semibold tabular-nums text-foreground">
-                        {time}
-                      </span>
-                      {copied ? (
-                        <Check className="h-3 w-3 text-emerald-500" />
-                      ) : (
-                        <Copy className="h-3 w-3 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
-                      )}
-                    </div>
-                  </button>
-                );
-              })}
-              <p className="px-1 pt-1 text-[10.5px] text-muted-foreground">
-                点击卡片复制时间，后续小工具可直接扩展到右侧栏。
-              </p>
-            </div>
-          )}
         </aside>
       )}
 
@@ -265,20 +175,6 @@ export function RightToolRail({
             {activeTaskCount > 0 && (
               <span className="absolute top-1 right-1 h-1.5 w-1.5 rounded-full bg-primary" />
             )}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => toggle("clock")}
-            title="世界时钟"
-            className={cn(
-              "flex h-7.5 w-7.5 items-center justify-center rounded-lg transition-colors cursor-pointer",
-              activePanel === "clock"
-                ? "bg-primary/14 text-primary"
-                : "text-muted-foreground hover:bg-secondary hover:text-foreground"
-            )}
-          >
-            <Clock className="h-4 w-4" />
           </button>
         </div>
 

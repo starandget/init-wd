@@ -616,7 +616,7 @@
       <section class="hero">
         <div class="glow"></div>
         <div class="container">
-          <div class="badge" id="hero-badge">✦ 最新正式版 v0.0.6 · Tauri v2 + React 19 + shadcn/ui + Rust</div>
+          <div class="badge" id="hero-badge">✦ 最新正式版 v0.0.7 · Tauri v2 + React 19 + shadcn/ui + Rust</div>
           <h1>
             不用敲一行命令，<br />
             <span class="gradient-text">优雅掌控你的 Mac 软件、Dock 与系统设置</span>
@@ -692,7 +692,7 @@
                       9 大统一分类 · 局域网加速中 (192.168.1.105:1082 · 42 ms)
                     </div>
                   </div>
-                  <span class="pill blue">Brew 就绪 · arm64 · v0.0.6</span>
+                  <span class="pill blue">Brew 就绪 · arm64 · v0.0.7</span>
                 </div>
                 <div class="mock-grid">
                   <div class="mock-card">
@@ -797,7 +797,7 @@
                   原生适配搭载 Apple M 系列芯片的 MacBook Air、MacBook Pro、Mac mini、iMac 与 Mac Studio。
                 </p>
                 <div class="dl-meta">
-                  <span id="card-ver-arm64">版本：v0.0.6</span>
+                  <span id="card-ver-arm64">版本：v0.0.7</span>
                   <span>·</span>
                   <span>系统要求：macOS 12.0+</span>
                   <span>·</span>
@@ -826,7 +826,7 @@
                   适配 2020 年及更早搭载 Intel 处理器的 Mac 设备。
                 </p>
                 <div class="dl-meta">
-                  <span id="card-ver-x64">版本：v0.0.6</span>
+                  <span id="card-ver-x64">版本：v0.0.7</span>
                   <span>·</span>
                   <span>系统要求：macOS 12.0+</span>
                   <span>·</span>
@@ -868,8 +868,26 @@
             <div class="release-card">
               <div class="release-head">
                 <div class="release-tag">
+                  <span>v0.0.7</span>
+                  <span class="pill blue">最新正式版 · 托盘点击直达主界面 & 精简世界时钟</span>
+                </div>
+                <span class="release-date">2026-11-26 · <a href="https://github.com/starandget/star-box/releases/tag/v0.0.7" target="_blank" rel="noreferrer" style="text-decoration: underline">查看 GitHub Release ↗</a></span>
+              </div>
+              <div class="release-cols">
+                <div class="release-group">
+                  <h4>🖱️ 菜单栏托盘交互精简</h4>
+                  <ul>
+                    <li>移除菜单栏托盘与右侧工具轨的世界时间浮窗及面板，左键点击顶部菜单栏图标直接唤起并聚焦 Star Box 主界面，右键菜单保留打开与退出。</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div class="release-card">
+              <div class="release-head">
+                <div class="release-tag">
                   <span>v0.0.6</span>
-                  <span class="pill blue">最新正式版 · 应用内一键自动更新</span>
+                  <span class="pill">应用内一键自动更新</span>
                 </div>
                 <span class="release-date">2026-11-26 · <a href="https://github.com/starandget/star-box/releases/tag/v0.0.6" target="_blank" rel="noreferrer" style="text-decoration: underline">查看 GitHub Release ↗</a></span>
               </div>
@@ -1112,7 +1130,7 @@
           const res = await fetch("https://api.github.com/repos/starandget/star-box/releases/latest");
           if (!res.ok) return;
           const data = await res.json();
-          const tag = data.tag_name || "v0.0.6";
+          const tag = data.tag_name || "v0.0.7";
           const badge = document.getElementById("hero-badge");
           if (badge) {
             badge.textContent = `✦ 最新正式版 ${tag} · Tauri v2 + React 19 + shadcn/ui + Rust`;
