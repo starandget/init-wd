@@ -1,6 +1,6 @@
 [package]
 name = "star-box"
-version = "0.0.5"
+version = "0.0.6"
 description = "Star Box — macOS 软件中心与装机助手"
 authors = ["starandget"]
 edition = "2021"

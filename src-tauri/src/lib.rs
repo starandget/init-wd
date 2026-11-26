@@ -181,6 +181,7 @@ pub fn run() {
             env::get_autostart_enabled,
             env::set_autostart_enabled,
             env::check_app_update,
+            env::install_app_update,
             env::init_workspace_folders,
             catalog::search_brew_catalog,
             catalog::inspect_github_repo,

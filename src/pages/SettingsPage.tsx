@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   CloudDownload,
   CloudUpload,
+  Download,
   ExternalLink,
   FileDown,
   FileUp,
@@ -28,10 +29,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
 import type {
   EnvStatus,
+  SelfUpdateProgressEvent,
   StarBoxProfile,
   ThemeMode,
   UpdateCheckResult,
@@ -41,6 +44,9 @@ interface SettingsPageProps {
   env: EnvStatus | null;
   profile: StarBoxProfile | null;
   updateInfo: UpdateCheckResult | null;
+  selfUpdateState?: SelfUpdateProgressEvent | null;
+  selfUpdating?: boolean;
+  onSelfUpdate?: () => void;
   theme?: ThemeMode;
   onChangeTheme?: (theme: ThemeMode) => void;
   installConcurrency?: number;
@@ -127,6 +133,9 @@ export function SettingsPage({
   env,
   profile,
   updateInfo,
+  selfUpdateState,
+  selfUpdating = false,
+  onSelfUpdate,
   theme = "light",
   onChangeTheme,
   installConcurrency = 5,
@@ -351,47 +360,98 @@ export function SettingsPage({
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/40 p-3.5">
-                  <div>
-                    <div className="flex items-center gap-2 text-sm font-medium">
-                      <span>Star Box 当前版本</span>
-                      <Badge variant="secondary" className="font-mono">
-                        v{updateInfo?.current_version || "0.0.5"}
-                      </Badge>
-                      {updateInfo?.has_update && (
-                        <Badge variant="info">
-                          有新版 v{updateInfo.latest_version}
+                <div className="space-y-3 rounded-lg border border-border bg-muted/40 p-3.5">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2 text-sm font-medium">
+                        <span>Star Box 当前版本</span>
+                        <Badge variant="secondary" className="font-mono">
+                          v{updateInfo?.current_version || "0.0.6"}
                         </Badge>
+                        {updateInfo?.has_update && (
+                          <Badge variant="info">
+                            有新版 v{updateInfo.latest_version}
+                            {updateInfo.asset_size
+                              ? ` · ${(updateInfo.asset_size / (1024 * 1024)).toFixed(1)} MB`
+                              : ""}
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="mt-0.5 text-xs text-muted-foreground">
+                        {updateInfo?.has_update && updateInfo.download_url
+                          ? "点击「一键更新」将自动下载校验安装包、解除隔离并重启应用"
+                          : "点击检查 GitHub Releases 最新正式版安装包"}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {updateInfo?.has_update && (
+                        <>
+                          {updateInfo.download_url && onSelfUpdate && (
+                            <Button
+                              size="sm"
+                              disabled={selfUpdating}
+                              onClick={onSelfUpdate}
+                            >
+                              {selfUpdating ? (
+                                <Spinner className="h-3.5 w-3.5" />
+                              ) : (
+                                <Download className="h-3.5 w-3.5" />
+                              )}
+                              {selfUpdating ? "更新中..." : "一键更新"}
+                            </Button>
+                          )}
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => api.openExternal(updateInfo.release_url)}
+                          >
+                            手动下载
+                            <ArrowUpRight className="h-3.5 w-3.5" />
+                          </Button>
+                        </>
                       )}
-                    </div>
-                    <div className="mt-0.5 text-xs text-muted-foreground">
-                      点击检查 GitHub Releases 最新正式版安装包
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {updateInfo?.has_update && (
                       <Button
                         size="sm"
-                        onClick={() => api.openExternal(updateInfo.release_url)}
+                        variant="outline"
+                        disabled={checkingUpdate || selfUpdating}
+                        onClick={handleManualCheckUpdate}
                       >
-                        去下载
-                        <ArrowUpRight className="h-3.5 w-3.5" />
+                        {checkingUpdate ? (
+                          <Spinner className="h-3.5 w-3.5" />
+                        ) : (
+                          <RefreshCw className="h-3.5 w-3.5" />
+                        )}
+                        检查更新
                       </Button>
-                    )}
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={checkingUpdate}
-                      onClick={handleManualCheckUpdate}
-                    >
-                      {checkingUpdate ? (
-                        <Spinner className="h-3.5 w-3.5" />
-                      ) : (
-                        <RefreshCw className="h-3.5 w-3.5" />
-                      )}
-                      检查更新
-                    </Button>
+                    </div>
                   </div>
+
+                  {selfUpdateState && (
+                    <div className="space-y-1.5 border-t border-border/70 pt-2.5">
+                      <div className="flex items-center justify-between text-xs">
+                        <span
+                          className={cn(
+                            "font-medium",
+                            selfUpdateState.stage === "error"
+                              ? "text-destructive"
+                              : selfUpdateState.done && selfUpdateState.success
+                              ? "text-emerald-600 dark:text-emerald-400"
+                              : "text-foreground"
+                          )}
+                        >
+                          {selfUpdateState.message}
+                        </span>
+                        {selfUpdateState.stage !== "error" && (
+                          <span className="font-mono text-[11px] text-muted-foreground tabular-nums">
+                            {selfUpdateState.progress}%
+                          </span>
+                        )}
+                      </div>
+                      {selfUpdateState.stage !== "error" && (
+                        <Progress value={selfUpdateState.progress} className="h-1.5" />
+                      )}
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>

@@ -118,6 +118,19 @@ pub struct UpdateCheckResult {
     pub latest_version: String,
     pub has_update: bool,
     pub release_url: String,
+    pub download_url: Option<String>,
+    pub asset_name: Option<String>,
+    pub asset_size: Option<u64>,
+    pub release_notes: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SelfUpdateProgressEvent {
+    pub stage: String,
+    pub message: String,
+    pub progress: u8,
+    pub done: bool,
+    pub success: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

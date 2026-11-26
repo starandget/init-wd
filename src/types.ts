@@ -124,6 +124,18 @@ export interface UpdateCheckResult {
   latest_version: string;
   has_update: boolean;
   release_url: string;
+  download_url?: string | null;
+  asset_name?: string | null;
+  asset_size?: number | null;
+  release_notes?: string | null;
+}
+
+export interface SelfUpdateProgressEvent {
+  stage: string;
+  message: string;
+  progress: number;
+  done: boolean;
+  success: boolean;
 }
 
 export interface LocalAppCandidate {

@@ -30,6 +30,7 @@ import type {
   LocalAppCandidate,
   NavTab,
   ProxyConfig,
+  SelfUpdateProgressEvent,
   StarBoxProfile,
   ThemeMode,
   ToastNotice,
@@ -54,6 +55,9 @@ export default function App() {
 
   const [env, setEnv] = useState<EnvStatus | null>(null);
   const [updateInfo, setUpdateInfo] = useState<UpdateCheckResult | null>(null);
+  const [selfUpdating, setSelfUpdating] = useState(false);
+  const [selfUpdateState, setSelfUpdateState] =
+    useState<SelfUpdateProgressEvent | null>(null);
   const [profile, setProfile] = useState<StarBoxProfile | null>(null);
   const [installedMap, setInstalledMap] = useState<Record<string, InstalledInfo>>({});
   const [localApps, setLocalApps] = useState<LocalAppCandidate[]>([]);
@@ -243,11 +247,23 @@ export default function App() {
       });
     });
 
+    const unlistenSelfUpdate = listen<SelfUpdateProgressEvent>(
+      "self-update-progress",
+      (event) => {
+        const p = event.payload;
+        setSelfUpdateState(p);
+        if (p.done) {
+          setSelfUpdating(false);
+        }
+      }
+    );
+
     return () => {
       unlistenProgress.then((fn) => fn());
       unlistenEnv.then((fn) => fn());
       unlistenLanLog.then((fn) => fn());
       unlistenLanNote.then((fn) => fn());
+      unlistenSelfUpdate.then((fn) => fn());
     };
   }, [refreshEnv]);
 
@@ -587,6 +603,47 @@ export default function App() {
     await refreshEnv();
   };
 
+  const handleSelfUpdate = useCallback(async () => {
+    if (!updateInfo?.download_url) {
+      if (updateInfo?.release_url) {
+        void api.openExternal(updateInfo.release_url);
+      }
+      return;
+    }
+    if (selfUpdating) return;
+    setSelfUpdating(true);
+    setSelfUpdateState({
+      stage: "downloading",
+      message: "正在准备更新...",
+      progress: 2,
+      done: false,
+      success: false,
+    });
+    try {
+      await api.installAppUpdate(updateInfo.download_url);
+    } catch (e) {
+      const msg = String(e);
+      setSelfUpdating(false);
+      setSelfUpdateState({
+        stage: "error",
+        message: msg,
+        progress: 0,
+        done: true,
+        success: false,
+      });
+      showToast({
+        title: "自动更新失败",
+        description: msg,
+        actionLabel: "打开官网",
+        onAction: () => {
+          if (updateInfo?.release_url) {
+            void api.openExternal(updateInfo.release_url);
+          }
+        },
+      });
+    }
+  }, [selfUpdating, showToast, updateInfo]);
+
   const activeTaskCount = useMemo(
     () =>
       tasks.filter((t) => t.status === "queued" || t.status === "running").length,
@@ -610,6 +667,9 @@ export default function App() {
           proxyConfig={proxyConfig}
           lanServerStatus={lanServerStatus}
           updateInfo={updateInfo}
+          selfUpdateState={selfUpdateState}
+          selfUpdating={selfUpdating}
+          onSelfUpdate={handleSelfUpdate}
           activeTaskCount={activeTaskCount}
           installedCount={installedCount}
           totalAppsCount={installableCount}
@@ -725,6 +785,9 @@ export default function App() {
             env={env}
             profile={profile}
             updateInfo={updateInfo}
+            selfUpdateState={selfUpdateState}
+            selfUpdating={selfUpdating}
+            onSelfUpdate={handleSelfUpdate}
             theme={theme}
             onChangeTheme={setTheme}
             installConcurrency={Math.min(5, Math.max(1, profile?.install_concurrency ?? 5))}

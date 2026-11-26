@@ -23,6 +23,8 @@ export const api = {
     invoke<boolean>("set_autostart_enabled", { enabled }),
   checkAppUpdate: () =>
     invoke<import("./types").UpdateCheckResult>("check_app_update"),
+  installAppUpdate: (downloadUrl: string) =>
+    invoke<void>("install_app_update", { downloadUrl }),
   initWorkspaceFolders: (folders: string[]) =>
     invoke<import("./types").InitFoldersResult>("init_workspace_folders", {
       folders,

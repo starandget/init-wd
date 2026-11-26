@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { api } from "@/api";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import {
   SidebarGroup,
@@ -32,6 +33,7 @@ import type {
   LanServerStatus,
   NavTab,
   ProxyConfig,
+  SelfUpdateProgressEvent,
   ThemeMode,
   UpdateCheckResult,
 } from "@/types";
@@ -43,6 +45,9 @@ interface SidebarProps {
   proxyConfig?: ProxyConfig | null;
   lanServerStatus?: LanServerStatus | null;
   updateInfo: UpdateCheckResult | null;
+  selfUpdateState?: SelfUpdateProgressEvent | null;
+  selfUpdating?: boolean;
+  onSelfUpdate?: () => void;
   activeTaskCount: number;
   installedCount: number;
   totalAppsCount: number;
@@ -101,6 +106,9 @@ export function Sidebar({
   proxyConfig,
   lanServerStatus,
   updateInfo,
+  selfUpdateState,
+  selfUpdating = false,
+  onSelfUpdate,
   activeTaskCount,
   installedCount,
   theme,
@@ -182,14 +190,39 @@ export function Sidebar({
       {/* Bottom Environment Status */}
       <div className="space-y-2.5 p-3.5">
         {updateInfo?.has_update && (
-          <button
-            type="button"
-            onClick={() => api.openExternal(updateInfo.release_url)}
-            className="flex w-full items-center justify-between rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-xs font-medium text-blue-700 hover:bg-blue-500/15 dark:text-blue-300 cursor-pointer"
-          >
-            <span>发现新版 v{updateInfo.latest_version}</span>
-            <ArrowUpRight className="h-3.5 w-3.5" />
-          </button>
+          selfUpdating ? (
+            <div className="space-y-1.5 rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-xs text-blue-700 dark:text-blue-300">
+              <div className="flex items-center justify-between font-medium">
+                <span>正在更新 v{updateInfo.latest_version}</span>
+                <span className="tabular-nums">{selfUpdateState?.progress ?? 0}%</span>
+              </div>
+              <Progress value={selfUpdateState?.progress ?? 0} className="h-1" />
+              <div className="truncate text-[10.5px] opacity-85">
+                {selfUpdateState?.message || "正在准备更新..."}
+              </div>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() =>
+                updateInfo.download_url && onSelfUpdate
+                  ? onSelfUpdate()
+                  : api.openExternal(updateInfo.release_url)
+              }
+              className="flex w-full items-center justify-between rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-xs font-medium text-blue-700 hover:bg-blue-500/15 dark:text-blue-300 cursor-pointer"
+            >
+              <span>
+                {updateInfo.download_url
+                  ? `一键更新 v${updateInfo.latest_version}`
+                  : `发现新版 v${updateInfo.latest_version}`}
+              </span>
+              {updateInfo.download_url ? (
+                <Download className="h-3.5 w-3.5" />
+              ) : (
+                <ArrowUpRight className="h-3.5 w-3.5" />
+              )}
+            </button>
+          )
         )}
 
         <div className="space-y-1.5">

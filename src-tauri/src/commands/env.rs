@@ -1,15 +1,20 @@
-use crate::models::{EnvLogEvent, EnvStatus, InitFoldersResult, UpdateCheckResult};
+use crate::models::{
+    EnvLogEvent, EnvStatus, InitFoldersResult, SelfUpdateProgressEvent, UpdateCheckResult,
+};
+use futures_util::StreamExt;
 use serde::Deserialize;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Mutex, OnceLock};
+use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter};
-use tokio::io::{AsyncBufReadExt, BufReader};
+use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::process::Command;
 
 static BREW_INSTALL_PID: OnceLock<Mutex<Option<u32>>> = OnceLock::new();
 static BREW_INSTALL_CANCELLED: AtomicBool = AtomicBool::new(false);
+static SELF_UPDATE_RUNNING: AtomicBool = AtomicBool::new(false);
 
 fn brew_pid_slot() -> &'static Mutex<Option<u32>> {
     BREW_INSTALL_PID.get_or_init(|| Mutex::new(None))
@@ -519,9 +524,82 @@ pub async fn set_autostart_enabled(enabled: bool) -> Result<bool, String> {
 }
 
 #[derive(Deserialize)]
+struct ReleaseAssetResp {
+    name: String,
+    browser_download_url: String,
+    #[serde(default)]
+    size: u64,
+}
+
+#[derive(Deserialize)]
 struct LatestReleaseResp {
     tag_name: String,
     html_url: String,
+    #[serde(default)]
+    body: Option<String>,
+    #[serde(default)]
+    assets: Vec<ReleaseAssetResp>,
+}
+
+fn select_matching_dmg_asset<'a>(
+    assets: &'a [ReleaseAssetResp],
+    arch: &str,
+) -> Option<&'a ReleaseAssetResp> {
+    let want_arm = arch == "aarch64" || arch == "arm64";
+    assets.iter().find(|a| {
+        let lower = a.name.to_ascii_lowercase();
+        if !lower.ends_with(".dmg") {
+            return false;
+        }
+        if want_arm {
+            lower.contains("aarch64") || lower.contains("arm64")
+        } else {
+            lower.contains("x64") || lower.contains("x86_64") || lower.contains("intel")
+        }
+    })
+}
+
+fn validate_update_download_url(url: &str) -> Result<(), String> {
+    let trimmed = url.trim();
+    let allowed = trimmed.starts_with("https://github.com/starandget/star-box/releases/download/")
+        || trimmed.starts_with("https://objects.githubusercontent.com/");
+    if !allowed || !trimmed.to_ascii_lowercase().contains(".dmg") {
+        return Err("更新包下载地址不在官方白名单内，已拒绝下载".to_string());
+    }
+    Ok(())
+}
+
+fn resolve_target_app_bundle() -> (PathBuf, bool) {
+    if let Ok(exe) = std::env::current_exe() {
+        for ancestor in exe.ancestors() {
+            if let Some(name) = ancestor.file_name().and_then(|s| s.to_str()) {
+                if name.ends_with(".app") {
+                    return (ancestor.to_path_buf(), true);
+                }
+            }
+        }
+    }
+    (PathBuf::from("/Applications/Star Box.app"), false)
+}
+
+fn emit_self_update(
+    app: &AppHandle,
+    stage: &str,
+    message: impl Into<String>,
+    progress: u8,
+    done: bool,
+    success: bool,
+) {
+    let _ = app.emit(
+        "self-update-progress",
+        SelfUpdateProgressEvent {
+            stage: stage.to_string(),
+            message: message.into(),
+            progress,
+            done,
+            success,
+        },
+    );
 }
 
 fn parse_semver(v: &str) -> (u32, u32, u32) {
@@ -537,7 +615,7 @@ fn parse_semver(v: &str) -> (u32, u32, u32) {
 #[tauri::command]
 pub async fn check_app_update() -> Result<UpdateCheckResult, String> {
     let current = env!("CARGO_PKG_VERSION").to_string();
-    let client = crate::commands::proxy::build_http_client(std::time::Duration::from_secs(12))
+    let client = crate::commands::proxy::build_http_client(Duration::from_secs(12))
         .map_err(|e| e.to_string())?;
 
     let resp = client
@@ -557,13 +635,439 @@ pub async fn check_app_update() -> Result<UpdateCheckResult, String> {
 
     let latest_clean = data.tag_name.trim_start_matches('v').to_string();
     let has_update = parse_semver(&latest_clean) > parse_semver(&current);
+    let matched = select_matching_dmg_asset(&data.assets, std::env::consts::ARCH);
 
     Ok(UpdateCheckResult {
         current_version: current,
         latest_version: latest_clean,
         has_update,
         release_url: data.html_url,
+        download_url: matched.map(|a| a.browser_download_url.clone()),
+        asset_name: matched.map(|a| a.name.clone()),
+        asset_size: matched.map(|a| a.size),
+        release_notes: data.body,
     })
+}
+
+fn shell_quote(s: &str) -> String {
+    format!("'{}'", s.replace('\'', "'\\''"))
+}
+
+fn is_dir_writable(dir: &Path) -> bool {
+    let probe = dir.join(format!(".starbox-write-probe-{}", uuid::Uuid::new_v4()));
+    match std::fs::File::create(&probe) {
+        Ok(_) => {
+            let _ = std::fs::remove_file(&probe);
+            true
+        }
+        Err(_) => false,
+    }
+}
+
+async fn run_self_update_inner(app: &AppHandle, download_url: &str) -> Result<(), String> {
+    validate_update_download_url(download_url)?;
+
+    let run_id = uuid::Uuid::new_v4().to_string();
+    let work_dir = std::env::temp_dir().join(format!("starbox-self-update-{run_id}"));
+    let dmg_path = work_dir.join("StarBox-update.dmg");
+    let mount_dir = work_dir.join("mnt");
+    let staged_app = work_dir.join("Star Box.app");
+
+    tokio::fs::create_dir_all(&mount_dir)
+        .await
+        .map_err(|e| format!("创建临时更新目录失败: {e}"))?;
+
+    // 1. Stream download DMG (using Star Box proxy if enabled)
+    emit_self_update(app, "downloading", "正在连接下载服务器...", 4, false, false);
+    let client = crate::commands::proxy::build_http_client(Duration::from_secs(300))
+        .map_err(|e| format!("初始化下载客户端失败: {e}"))?;
+
+    let resp = client
+        .get(download_url)
+        .send()
+        .await
+        .map_err(|e| format!("下载安装包失败: {e}"))?;
+    if !resp.status().is_success() {
+        let _ = tokio::fs::remove_dir_all(&work_dir).await;
+        return Err(format!("下载安装包失败：HTTP {}", resp.status()));
+    }
+
+    let total_bytes = resp.content_length().unwrap_or(0);
+    let mut file = tokio::fs::File::create(&dmg_path)
+        .await
+        .map_err(|e| format!("创建临时安装包失败: {e}"))?;
+
+    let mut stream = resp.bytes_stream();
+    let mut downloaded: u64 = 0;
+    let mut last_emit = Instant::now();
+    let started = Instant::now();
+
+    while let Some(chunk_res) = stream.next().await {
+        let chunk = match chunk_res {
+            Ok(c) => c,
+            Err(e) => {
+                let _ = tokio::fs::remove_dir_all(&work_dir).await;
+                return Err(format!("下载中断: {e}"));
+            }
+        };
+        if let Err(e) = file.write_all(&chunk).await {
+            let _ = tokio::fs::remove_dir_all(&work_dir).await;
+            return Err(format!("写入临时安装包失败: {e}"));
+        }
+        downloaded += chunk.len() as u64;
+
+        if last_emit.elapsed() >= Duration::from_millis(180) {
+            last_emit = Instant::now();
+            let elapsed = started.elapsed().as_secs_f64().max(0.1);
+            let speed_mb = (downloaded as f64 / (1024.0 * 1024.0)) / elapsed;
+            let (pct, msg) = if total_bytes > 0 {
+                let ratio = (downloaded as f64 / total_bytes as f64).clamp(0.0, 1.0);
+                let p = 5u8 + (ratio * 65.0) as u8;
+                (
+                    p,
+                    format!(
+                        "正在下载更新包 {:.1} / {:.1} MB ({:.1} MB/s)",
+                        downloaded as f64 / (1024.0 * 1024.0),
+                        total_bytes as f64 / (1024.0 * 1024.0),
+                        speed_mb
+                    ),
+                )
+            } else {
+                (
+                    38,
+                    format!(
+                        "正在下载更新包 {:.1} MB ({:.1} MB/s)",
+                        downloaded as f64 / (1024.0 * 1024.0),
+                        speed_mb
+                    ),
+                )
+            };
+            emit_self_update(app, "downloading", msg, pct, false, false);
+        }
+    }
+    file.flush()
+        .await
+        .map_err(|e| format!("刷写安装包缓存失败: {e}"))?;
+    drop(file);
+
+    if downloaded < 1024 * 512 || (total_bytes > 0 && downloaded != total_bytes) {
+        let _ = tokio::fs::remove_dir_all(&work_dir).await;
+        return Err("下载的安装包不完整，请检查网络后重试".to_string());
+    }
+
+    // 2. Mount DMG readonly without auto-opening Finder
+    emit_self_update(app, "verifying", "正在挂载并校验安装包...", 74, false, false);
+    let mut attach = Command::new("/usr/bin/hdiutil");
+    attach
+        .args([
+            "attach",
+            &dmg_path.to_string_lossy(),
+            "-nobrowse",
+            "-readonly",
+            "-noautoopen",
+            "-mountpoint",
+            &mount_dir.to_string_lossy(),
+        ])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+
+    let mut attach_child = attach
+        .spawn()
+        .map_err(|e| format!("无法启动 hdiutil 挂载镜像: {e}"))?;
+    if let Some(mut stdin) = attach_child.stdin.take() {
+        let _ = stdin.write_all(b"Y\n").await;
+    }
+    let attach_out = attach_child
+        .wait_with_output()
+        .await
+        .map_err(|e| format!("等待镜像挂载失败: {e}"))?;
+
+    if !attach_out.status.success() {
+        let _ = tokio::fs::remove_dir_all(&work_dir).await;
+        return Err(format!(
+            "挂载更新镜像失败: {}",
+            String::from_utf8_lossy(&attach_out.stderr).trim()
+        ));
+    }
+
+    // Extract & verify bundle from mounted DMG, always detaching afterwards
+    let stage_result: Result<(), String> = async {
+        let src_app = mount_dir.join("Star Box.app");
+        let meta = tokio::fs::symlink_metadata(&src_app)
+            .await
+            .map_err(|_| "更新镜像中未找到 Star Box.app".to_string())?;
+        if meta.file_type().is_symlink() || !meta.is_dir() {
+            return Err("更新镜像中的 Star Box.app 结构异常".to_string());
+        }
+
+        let plist_path = src_app.join("Contents/Info.plist");
+        let plist_bytes = tokio::fs::read(&plist_path)
+            .await
+            .map_err(|_| "更新镜像缺少 Info.plist".to_string())?;
+        let plist_text = String::from_utf8_lossy(&plist_bytes);
+        if !plist_text.contains("com.starandget.starbox") {
+            return Err("安装包标识符校验不匹配，已中止更新".to_string());
+        }
+        if !src_app.join("Contents/MacOS/star-box").is_file() {
+            return Err("更新包缺少主程序二进制文件".to_string());
+        }
+
+        // Verify bundle signature integrity
+        let sig_status = Command::new("/usr/bin/codesign")
+            .args(["--verify", "--deep", "--strict", &src_app.to_string_lossy()])
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status()
+            .await
+            .map_err(|e| format!("校验应用签名失败: {e}"))?;
+        if !sig_status.success() {
+            return Err("更新包签名完整性校验未通过，已中止安装".to_string());
+        }
+
+        emit_self_update(app, "installing", "正在解压新版本应用...", 84, false, false);
+        let ditto_status = Command::new("/usr/bin/ditto")
+            .arg(&src_app)
+            .arg(&staged_app)
+            .status()
+            .await
+            .map_err(|e| format!("复制新版本失败: {e}"))?;
+        if !ditto_status.success() {
+            return Err("解压新版本 Star Box.app 失败".to_string());
+        }
+
+        // Remove Gatekeeper quarantine attribute on the newly extracted app
+        let _ = Command::new("/usr/bin/xattr")
+            .args(["-cr", &staged_app.to_string_lossy()])
+            .status()
+            .await;
+
+        Ok(())
+    }
+    .await;
+
+    // Always detach DMG before continuing
+    let _ = Command::new("/usr/bin/hdiutil")
+        .args(["detach", &mount_dir.to_string_lossy(), "-force"])
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .await;
+
+    if let Err(err) = stage_result {
+        let _ = tokio::fs::remove_dir_all(&work_dir).await;
+        return Err(err);
+    }
+
+    // 3. Swap app atomically via detached helper script and relaunch
+    let (target_app, is_bundled) = resolve_target_app_bundle();
+    let target_parent = target_app
+        .parent()
+        .unwrap_or_else(|| Path::new("/Applications"));
+    let writable = is_dir_writable(target_parent);
+    let current_pid = if is_bundled { std::process::id() } else { 0 };
+    let backup_app = work_dir.join("Star Box.backup.app");
+
+    emit_self_update(
+        app,
+        "restarting",
+        if is_bundled {
+            "更新包已就绪，正在替换并重启 Star Box..."
+        } else {
+            "更新包已就绪，正在安装到 /Applications 并启动..."
+        },
+        95,
+        false,
+        false,
+    );
+
+    let swap_body = format!(
+        r#"set -e
+TARGET={target}
+STAGED={staged}
+BACKUP={backup}
+if [ -e "$TARGET" ]; then
+  rm -rf "$BACKUP"
+  mv "$TARGET" "$BACKUP"
+fi
+if ! mv "$STAGED" "$TARGET" 2>/dev/null; then
+  if ! /usr/bin/ditto "$STAGED" "$TARGET"; then
+    rm -rf "$TARGET"
+    if [ -e "$BACKUP" ]; then mv "$BACKUP" "$TARGET"; fi
+    exit 1
+  fi
+fi
+/usr/bin/xattr -cr "$TARGET" 2>/dev/null || true
+rm -rf "$BACKUP"
+"#,
+        target = shell_quote(&target_app.to_string_lossy()),
+        staged = shell_quote(&staged_app.to_string_lossy()),
+        backup = shell_quote(&backup_app.to_string_lossy()),
+    );
+
+    if !writable {
+        // Request admin authorization cleanly before exiting when target dir isn't user-writable
+        let swap_script_path = work_dir.join("elevated-swap.sh");
+        tokio::fs::write(&swap_script_path, &swap_body)
+            .await
+            .map_err(|e| format!("写入更新脚本失败: {e}"))?;
+        let _ = Command::new("/bin/chmod")
+            .args(["700", &swap_script_path.to_string_lossy()])
+            .status()
+            .await;
+
+        let osa = format!(
+            r#"do shell script "/bin/bash " & quoted form of "{}" with administrator privileges"#,
+            swap_script_path
+                .to_string_lossy()
+                .replace('\\', "\\\\")
+                .replace('"', "\\\"")
+        );
+        let status = Command::new("/usr/bin/osascript")
+            .args(["-e", &osa])
+            .status()
+            .await
+            .map_err(|e| format!("请求管理员授权失败: {e}"))?;
+        if !status.success() {
+            let _ = tokio::fs::remove_dir_all(&work_dir).await;
+            return Err("未获得管理员权限，已取消替换应用".to_string());
+        }
+
+        // Launch the newly replaced app and clean temp dir
+        let relaunch_script = format!(
+            r#"#!/bin/bash
+OLD_PID={pid}
+if [ "$OLD_PID" -gt 0 ]; then
+  for _ in $(seq 1 40); do
+    kill -0 "$OLD_PID" 2>/dev/null || break
+    sleep 0.25
+  done
+fi
+rm -rf {work}
+/usr/bin/open {target}
+"#,
+            pid = current_pid,
+            work = shell_quote(&work_dir.to_string_lossy()),
+            target = shell_quote(&target_app.to_string_lossy()),
+        );
+        let helper_path = std::env::temp_dir().join(format!("starbox-relaunch-{run_id}.sh"));
+        tokio::fs::write(&helper_path, &relaunch_script)
+            .await
+            .map_err(|e| format!("写入重启脚本失败: {e}"))?;
+        let _ = Command::new("/bin/chmod")
+            .args(["700", &helper_path.to_string_lossy()])
+            .status()
+            .await;
+
+        let mut helper = std::process::Command::new("/bin/bash");
+        helper
+            .arg("-c")
+            .arg(format!(
+                "{} ; rm -f {}",
+                shell_quote(&helper_path.to_string_lossy()),
+                shell_quote(&helper_path.to_string_lossy())
+            ))
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null());
+        #[cfg(unix)]
+        {
+            use std::os::unix::process::CommandExt;
+            helper.process_group(0);
+        }
+        helper
+            .spawn()
+            .map_err(|e| format!("启动重启辅助进程失败: {e}"))?;
+    } else {
+        // User-writable /Applications: wait for exit, swap atomically, clean up, and relaunch
+        let helper_script = format!(
+            r#"#!/bin/bash
+OLD_PID={pid}
+if [ "$OLD_PID" -gt 0 ]; then
+  for _ in $(seq 1 60); do
+    kill -0 "$OLD_PID" 2>/dev/null || break
+    sleep 0.25
+  done
+fi
+{swap}
+rm -rf {work}
+/usr/bin/open {target}
+"#,
+            pid = current_pid,
+            swap = swap_body,
+            work = shell_quote(&work_dir.to_string_lossy()),
+            target = shell_quote(&target_app.to_string_lossy()),
+        );
+        let helper_path = std::env::temp_dir().join(format!("starbox-apply-{run_id}.sh"));
+        tokio::fs::write(&helper_path, &helper_script)
+            .await
+            .map_err(|e| format!("写入自动更新脚本失败: {e}"))?;
+        let _ = Command::new("/bin/chmod")
+            .args(["700", &helper_path.to_string_lossy()])
+            .status()
+            .await;
+
+        let mut helper = std::process::Command::new("/bin/bash");
+        helper
+            .arg("-c")
+            .arg(format!(
+                "{} ; rm -f {}",
+                shell_quote(&helper_path.to_string_lossy()),
+                shell_quote(&helper_path.to_string_lossy())
+            ))
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null());
+        #[cfg(unix)]
+        {
+            use std::os::unix::process::CommandExt;
+            helper.process_group(0);
+        }
+        helper
+            .spawn()
+            .map_err(|e| format!("启动自动更新进程失败: {e}"))?;
+    }
+
+    emit_self_update(
+        app,
+        "restarting",
+        if is_bundled {
+            "更新完成，正在自动重启..."
+        } else {
+            "已安装新版本到 /Applications/Star Box.app 并启动"
+        },
+        100,
+        true,
+        true,
+    );
+
+    if is_bundled {
+        crate::commands::lan_server::shutdown_if_running();
+        let app_exit = app.clone();
+        tokio::spawn(async move {
+            tokio::time::sleep(Duration::from_millis(350)).await;
+            app_exit.exit(0);
+        });
+    }
+
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn install_app_update(app: AppHandle, download_url: String) -> Result<(), String> {
+    if SELF_UPDATE_RUNNING
+        .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
+        .is_err()
+    {
+        return Err("正在更新中，请稍候...".to_string());
+    }
+
+    let result = run_self_update_inner(&app, &download_url).await;
+    if let Err(ref err) = result {
+        emit_self_update(&app, "error", err.clone(), 0, true, false);
+    }
+    SELF_UPDATE_RUNNING.store(false, Ordering::SeqCst);
+    result
 }
 
 #[tauri::command]
@@ -626,4 +1130,46 @@ pub async fn init_workspace_folders(folders: Vec<String>) -> Result<InitFoldersR
         renamed,
         existed,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_select_matching_dmg_asset() {
+        let assets = vec![
+            ReleaseAssetResp {
+                name: "Star.Box_0.0.5_aarch64.dmg".to_string(),
+                browser_download_url: "https://github.com/starandget/star-box/releases/download/v0.0.5/Star.Box_0.0.5_aarch64.dmg".to_string(),
+                size: 5_200_000,
+            },
+            ReleaseAssetResp {
+                name: "Star.Box_0.0.5_x64.dmg".to_string(),
+                browser_download_url: "https://github.com/starandget/star-box/releases/download/v0.0.5/Star.Box_0.0.5_x64.dmg".to_string(),
+                size: 5_400_000,
+            },
+        ];
+        assert_eq!(
+            select_matching_dmg_asset(&assets, "aarch64").map(|a| a.name.as_str()),
+            Some("Star.Box_0.0.5_aarch64.dmg")
+        );
+        assert_eq!(
+            select_matching_dmg_asset(&assets, "x86_64").map(|a| a.name.as_str()),
+            Some("Star.Box_0.0.5_x64.dmg")
+        );
+    }
+
+    #[test]
+    fn test_validate_update_download_url() {
+        assert!(validate_update_download_url(
+            "https://github.com/starandget/star-box/releases/download/v0.0.5/Star.Box_0.0.5_aarch64.dmg"
+        )
+        .is_ok());
+        assert!(validate_update_download_url("https://evil.example.com/Star.Box.dmg").is_err());
+        assert!(validate_update_download_url(
+            "https://github.com/starandget/star-box/releases/download/v0.0.5/script.sh"
+        )
+        .is_err());
+    }
 }
